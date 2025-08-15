@@ -2679,27 +2679,30 @@
                 document.getElementById('analyzeBtn').disabled = true;
                 document.getElementById('analyzeBtn').textContent = '🔄 Analyzing...';
 
+                // Declare variables at function scope
+                let stockData, analysis, sentiment, news, fundamentals, report;
+                
                 try {
                     // Step 1: Data Agent
                     this.updateAgentStatus('dataAgentStatus', 'working', 'Fetching data...');
-                    const stockData = await this.agents.data.fetchStockData(symbol);
+                    stockData = await this.agents.data.fetchStockData(symbol);
                     this.updateAgentStatus('dataAgentStatus', 'complete', 'Data retrieved');
 
                     // Step 2: Analysis Agent  
                     this.updateAgentStatus('analysisAgentStatus', 'working', 'Analyzing...');
-                    const analysis = await this.agents.analysis.analyze(stockData);
+                    analysis = await this.agents.analysis.analyze(stockData);
                     this.updateAgentStatus('analysisAgentStatus', 'complete', 'Analysis complete');
 
                     // Step 3: Sentiment Agent
                     this.updateAgentStatus('sentimentAgentStatus', 'working', 'Checking sentiment...');
-                    const sentiment = await this.agents.sentiment.analyzeSentiment(symbol);
+                    sentiment = await this.agents.sentiment.analyzeSentiment(symbol);
                     this.updateAgentStatus('sentimentAgentStatus', 'complete', 'Sentiment analyzed');
 
                     // Step 4: News Agent
                     try {
                         console.log('Starting News Agent for symbol:', symbol);
                         this.updateAgentStatus('newsAgentStatus', 'working', 'Fetching news...');
-                        const news = await this.agents.news.fetchNews(symbol);
+                        news = await this.agents.news.fetchNews(symbol);
                         console.log('News Agent completed successfully:', news);
                         this.currentNews = news; // Store for modal access
                         this.updateAgentStatus('newsAgentStatus', 'complete', 'News retrieved');
@@ -2711,12 +2714,12 @@
 
                     // Step 5: Fundamentals Agent
                     this.updateAgentStatus('fundamentalsAgentStatus', 'working', 'Analyzing fundamentals...');
-                    const fundamentals = await this.agents.fundamentals.analyzeFundamentals(symbol, stockData.currentPrice);
+                    fundamentals = await this.agents.fundamentals.analyzeFundamentals(symbol, stockData.currentPrice);
                     this.updateAgentStatus('fundamentalsAgentStatus', 'complete', 'Fundamentals analyzed');
 
                     // Step 6: Report Agent
                     this.updateAgentStatus('reportAgentStatus', 'working', 'Generating report...');
-                    const report = await this.agents.report.generateReport(stockData, analysis, sentiment, this.mode, news, fundamentals);
+                    report = await this.agents.report.generateReport(stockData, analysis, sentiment, this.mode, news, fundamentals);
                     this.updateAgentStatus('reportAgentStatus', 'complete', 'Report ready');
 
                     // Display results
