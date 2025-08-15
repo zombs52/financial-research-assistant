@@ -2155,7 +2155,7 @@
                     articles.push({
                         title: template.title.replace('{symbol}', symbol),
                         summary: template.summary.replace('{symbol}', symbol),
-                        fullContent: template.fullContent.replace('{symbol}', symbol).replace('{company}', companyName),
+                        fullContent: (template.fullContent || template.summary).replace('{symbol}', symbol).replace('{company}', companyName),
                         sentiment: template.sentiment,
                         source: template.source,
                         publishedAt: publishTime.toISOString(),
@@ -2585,10 +2585,13 @@
                     this.confirmInvestment();
                 });
 
-                // News modal functionality
-                document.getElementById('closeNewsModal').addEventListener('click', () => {
-                    this.hideNewsModal();
-                });
+                // News modal functionality (with error handling)
+                const closeNewsModalBtn = document.getElementById('closeNewsModal');
+                if (closeNewsModalBtn) {
+                    closeNewsModalBtn.addEventListener('click', () => {
+                        this.hideNewsModal();
+                    });
+                }
 
                 // Close modal when clicking backdrop (using event delegation)
                 document.addEventListener('click', (e) => {
