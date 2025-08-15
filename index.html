@@ -2254,20 +2254,6 @@
                 return 'Neutral';
             }
 
-            generateRealisticURL(source, symbol) {
-                const sourceUrls = {
-                    'Financial Times': 'https://www.ft.com/content/financial-news',
-                    'Bloomberg': 'https://www.bloomberg.com/news/articles',
-                    'Reuters': 'https://www.reuters.com/business/finance',
-                    'MarketWatch': 'https://www.marketwatch.com/story',
-                    'Wall Street Journal': 'https://www.wsj.com/articles',
-                    'CNBC': 'https://www.cnbc.com/quotes'
-                };
-                
-                const baseUrl = sourceUrls[source] || 'https://finance.yahoo.com/news';
-                const randomId = Math.random().toString(36).substr(2, 9);
-                return `${baseUrl}/${symbol.toLowerCase()}-stock-${randomId}`;
-            }
 
             getTimeAgo(publishTime) {
                 const now = new Date();
@@ -2604,9 +2590,11 @@
                     this.hideNewsModal();
                 });
 
-                // Close modal when clicking backdrop
-                document.querySelector('.luxury-modal-backdrop').addEventListener('click', () => {
-                    this.hideNewsModal();
+                // Close modal when clicking backdrop (using event delegation)
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('luxury-modal-backdrop')) {
+                        this.hideNewsModal();
+                    }
                 });
 
                 // Event delegation for news article clicks

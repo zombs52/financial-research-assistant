@@ -5,7 +5,8 @@
       "Bash(node:*)",
       "WebFetch(domain:finstockassistant.vercel.app)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ],
     "defaultMode": "acceptEdits"
   }
