@@ -924,6 +924,124 @@
         .business-section li {
             margin-bottom: 5px;
         }
+
+        /* Portfolio View Styles */
+        .portfolio-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+        }
+
+        .summary-stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .portfolio-positions {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .portfolio-position {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+        }
+
+        .position-header h4 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .position-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .position-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            padding: 15px 20px;
+            background: #f8fafc;
+        }
+
+        .position-stat {
+            text-align: center;
+        }
+
+        .position-stat .stat-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+
+        .position-stat .stat-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .position-investments {
+            padding: 15px 20px;
+        }
+
+        .investment-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .investment-row:last-child {
+            border-bottom: none;
+        }
+
+        .delete-investment {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .delete-investment:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
@@ -2891,25 +3009,29 @@
             }
         }
 
-        // Multi-Agent Financial Research System
-        class FinancialResearchSystem {
+        // Portfolio Tracker System - Actually Useful for Real People
+        class PortfolioTracker {
             constructor() {
-                this.mode = 'beginner';
-                this.agents = {
-                    data: new DataAgent(),
-                    analysis: new AnalysisAgent(),
-                    sentiment: new SentimentAgent(),
-                    report: new ReportAgent(),
-                    news: new NewsAgent(),
-                    fundamentals: new FundamentalsAgent()
-                };
-                this.portfolioManager = new PortfolioManager();
-                this.comparisonManager = new ComparisonManager(this.portfolioManager);
-                this.currentAnalysis = null; // Store current analysis for portfolio addition
-                this.currentNews = null; // Store current news for modal access
-                
-                // Company name to symbol mapping for smart search
-                this.companyMap = {
+                console.log('PortfolioTracker initialized!');
+                this.portfolio = this.loadPortfolio();
+                console.log('Portfolio loaded:', this.portfolio);
+                this.initializeEventListeners();
+                console.log('Event listeners initialized');
+                this.updateDashboard();
+                console.log('Dashboard updated');
+            }
+
+            loadPortfolio() {
+                const saved = localStorage.getItem('keesPortfolio');
+                return saved ? JSON.parse(saved) : [];
+            }
+
+            savePortfolio() {
+                localStorage.setItem('keesPortfolio', JSON.stringify(this.portfolio));
+            }
+
+            resolveSymbol(input) {
+                const companyMap = {
                     'apple': 'AAPL', 'tesla': 'TSLA', 'google': 'GOOGL', 'alphabet': 'GOOGL',
                     'microsoft': 'MSFT', 'amazon': 'AMZN', 'meta': 'META', 'facebook': 'META',
                     'netflix': 'NFLX', 'nvidia': 'NVDA', 'asml': 'ASML', 'shell': 'SHELL',
@@ -2917,119 +3039,373 @@
                     'zoom': 'ZM', 'uber': 'UBER', 'airbnb': 'ABNB', 'spotify': 'SPOT'
                 };
                 
-                this.initializeEventListeners();
+                const cleanInput = input.trim().toLowerCase();
+                
+                // Check if it's already a valid symbol
+                if (/^[A-Z]{1,5}$/.test(input.trim())) {
+                    return input.trim().toUpperCase();
+                }
+                
+                // Look up company name
+                if (companyMap[cleanInput]) {
+                    return companyMap[cleanInput];
+                }
+                
+                // Try partial matches
+                for (const [company, symbol] of Object.entries(companyMap)) {
+                    if (company.includes(cleanInput) || cleanInput.includes(company)) {
+                        return symbol;
+                    }
+                }
+                
+                return input.trim().toUpperCase();
             }
 
             initializeEventListeners() {
-                // Search form
-                document.getElementById('searchForm').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.analyzeStock();
-                });
-
-                // Mode toggle
-                document.querySelectorAll('.mode-btn').forEach(btn => {
-                    if (btn.dataset.mode) {
-                        btn.addEventListener('click', (e) => {
-                            document.querySelectorAll('.mode-btn').forEach(b => {
-                                if (b.dataset.mode) b.classList.remove('active');
-                            });
-                            e.target.classList.add('active');
-                            this.mode = e.target.dataset.mode;
-                        });
-                    }
-                });
-
-                // Portfolio controls
-                document.getElementById('addToPortfolioBtn').addEventListener('click', () => {
-                    this.showInvestmentModal();
-                });
-
-                document.getElementById('viewPortfolioBtn').addEventListener('click', () => {
-                    this.showPortfolio();
-                });
-
-                document.getElementById('compareBtn').addEventListener('click', () => {
-                    this.showComparison();
-                });
-
-                // Portfolio management
-                document.getElementById('closePortfolioBtn').addEventListener('click', () => {
-                    this.hidePortfolio();
-                });
-
-                document.getElementById('analyzeAllBtn').addEventListener('click', () => {
-                    this.refreshAllPortfolioData();
-                });
-
-                document.getElementById('exportPortfolioBtn').addEventListener('click', () => {
-                    this.portfolioManager.exportPortfolio();
-                });
-
-                document.getElementById('clearPortfolioBtn').addEventListener('click', () => {
-                    if (confirm('Are you sure you want to clear your entire portfolio?')) {
-                        this.portfolioManager.clearPortfolio();
-                        this.refreshPortfolioDisplay();
-                    }
-                });
-
-                // Comparison controls
-                document.getElementById('closeComparisonBtn').addEventListener('click', () => {
-                    this.hideComparison();
-                });
-
-                document.getElementById('compareNowBtn').addEventListener('click', () => {
-                    this.performComparison();
-                });
-
-                // Investment modal controls
-                document.getElementById('cancelInvestmentBtn').addEventListener('click', () => {
-                    this.hideInvestmentModal();
-                });
-
-                document.getElementById('confirmInvestmentBtn').addEventListener('click', () => {
-                    this.confirmInvestment();
-                });
-
-                // News modal functionality (with error handling)
-                const closeNewsModalBtn = document.getElementById('closeNewsModal');
-                if (closeNewsModalBtn) {
-                    closeNewsModalBtn.addEventListener('click', () => {
-                        this.hideNewsModal();
+                console.log('Setting up event listeners...');
+                
+                // Add Investment Button
+                const addBtn = document.getElementById('addInvestmentBtn');
+                console.log('Add button found:', addBtn);
+                if (addBtn) {
+                    addBtn.addEventListener('click', () => {
+                        console.log('Add Investment button clicked!');
+                        document.getElementById('addInvestmentModal').style.display = 'flex';
                     });
                 }
 
-                // Close modal when clicking backdrop (using event delegation)
-                document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('luxury-modal-backdrop')) {
-                        this.hideNewsModal();
-                    }
-                });
+                // Close Add Investment Modal
+                const closeBtn = document.getElementById('closeAddInvestmentModal');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        document.getElementById('addInvestmentModal').style.display = 'none';
+                    });
+                }
 
-                // Event delegation for news article clicks
-                document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('news-link')) {
+                const cancelBtn = document.getElementById('cancelAddInvestment');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => {
+                        document.getElementById('addInvestmentModal').style.display = 'none';
+                    });
+                }
+
+                // Add Investment Form
+                const addForm = document.getElementById('addInvestmentForm');
+                if (addForm) {
+                    addForm.addEventListener('submit', (e) => {
                         e.preventDefault();
-                        const articleId = e.target.dataset.articleId;
-                        const article = this.findArticleById(articleId);
-                        if (article) {
-                            // If it's a real article with a real URL, open it in new tab
-                            if (article.isReal && article.url && article.url.startsWith('http')) {
-                                window.open(article.url, '_blank', 'noopener,noreferrer');
-                            } else {
-                                // Otherwise show modal with full content
-                                this.showNewsModal(article);
-                            }
-                        }
-                    }
+                        console.log('Form submitted!');
+                        this.addInvestment();
+                    });
+                }
+
+                // View Portfolio Button
+                const viewBtn = document.getElementById('viewPortfolioBtn');
+                if (viewBtn) {
+                    viewBtn.addEventListener('click', () => {
+                        console.log('View Portfolio clicked!');
+                        this.showPortfolioView();
+                    });
+                }
+
+                // Performance Button
+                const perfBtn = document.getElementById('performanceBtn');
+                if (perfBtn) {
+                    perfBtn.addEventListener('click', () => {
+                        console.log('Performance clicked!');
+                        this.showPerformanceView();
+                    });
+                }
+
+                // Export Button
+                const exportBtn = document.getElementById('exportBtn');
+                if (exportBtn) {
+                    exportBtn.addEventListener('click', () => {
+                        console.log('Export clicked!');
+                        this.exportPortfolio();
+                    });
+                }
+
+                // Modal backdrop clicks to close
+                document.querySelector('.luxury-modal-backdrop')?.addEventListener('click', () => {
+                    document.getElementById('addInvestmentModal').style.display = 'none';
                 });
 
-                // Allow Enter key in investment amount input
-                document.getElementById('investmentAmount').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        this.confirmInvestment();
+                // Delete investment event delegation
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-investment')) {
+                        const investmentId = e.target.dataset.id;
+                        this.deleteInvestment(investmentId);
                     }
                 });
+            }
+
+            addInvestment() {
+                const symbol = this.resolveSymbol(document.getElementById('newStockSymbol').value);
+                const shares = parseFloat(document.getElementById('sharesBought').value);
+                const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
+                const purchaseDate = document.getElementById('purchaseDate').value || new Date().toISOString().split('T')[0];
+
+                if (!symbol || !shares || !purchasePrice) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
+                const investment = {
+                    id: Date.now().toString(),
+                    symbol: symbol,
+                    shares: shares,
+                    purchasePrice: purchasePrice,
+                    purchaseDate: purchaseDate,
+                    dateAdded: new Date().toISOString()
+                };
+
+                this.portfolio.push(investment);
+                this.savePortfolio();
+                this.updateDashboard();
+
+                // Close modal and reset form
+                document.getElementById('addInvestmentModal').style.display = 'none';
+                document.getElementById('addInvestmentForm').reset();
+
+                // Show success message
+                alert(`Added ${shares} shares of ${symbol} to your portfolio!`);
+            }
+
+            showPortfolioView() {
+                if (this.portfolio.length === 0) {
+                    alert('Your portfolio is empty. Add some investments first!');
+                    return;
+                }
+                
+                const stats = this.calculatePortfolioStats();
+                const portfolioHTML = this.generatePortfolioHTML(stats);
+                
+                // Create or update portfolio modal
+                let modal = document.getElementById('portfolioModal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'portfolioModal';
+                    modal.className = 'luxury-modal';
+                    document.body.appendChild(modal);
+                }
+                
+                modal.innerHTML = portfolioHTML;
+                modal.style.display = 'flex';
+                
+                // Add close event listener
+                modal.querySelector('.luxury-close-btn').addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+            }
+
+            generatePortfolioHTML(stats) {
+                const positionsHTML = Object.values(stats.positions).map(position => {
+                    const positionValue = this.calculatePositionValue(position);
+                    return `
+                        <div class="portfolio-position">
+                            <div class="position-header">
+                                <h4>${position.symbol}</h4>
+                                <span class="position-value">$${positionValue.currentValue.toLocaleString()}</span>
+                            </div>
+                            <div class="position-details">
+                                <div class="position-stat">
+                                    <span class="stat-label">Shares:</span>
+                                    <span class="stat-value">${position.totalShares}</span>
+                                </div>
+                                <div class="position-stat">
+                                    <span class="stat-label">Avg Cost:</span>
+                                    <span class="stat-value">$${position.avgCostPerShare.toFixed(2)}</span>
+                                </div>
+                                <div class="position-stat">
+                                    <span class="stat-label">Total Cost:</span>
+                                    <span class="stat-value">$${position.totalCost.toLocaleString()}</span>
+                                </div>
+                                <div class="position-stat">
+                                    <span class="stat-label">Investments:</span>
+                                    <span class="stat-value">${position.investments.length}</span>
+                                </div>
+                            </div>
+                            <div class="position-investments">
+                                ${position.investments.map(inv => `
+                                    <div class="investment-row">
+                                        <span>${inv.shares} shares @ $${inv.purchasePrice}</span>
+                                        <span>${new Date(inv.purchaseDate).toLocaleDateString()}</span>
+                                        <button class="delete-investment" data-id="${inv.id}">×</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="luxury-modal-backdrop"></div>
+                    <div class="luxury-modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                        <div class="luxury-modal-header">
+                            <h3>💼 Your Portfolio</h3>
+                            <button class="luxury-close-btn">&times;</button>
+                        </div>
+                        <div class="luxury-modal-body">
+                            <div class="portfolio-summary">
+                                <div class="summary-stat">
+                                    <span class="stat-label">Total Invested:</span>
+                                    <span class="stat-value">$${stats.totalInvested.toLocaleString()}</span>
+                                </div>
+                                <div class="summary-stat">
+                                    <span class="stat-label">Unique Stocks:</span>
+                                    <span class="stat-value">${stats.uniqueStocks}</span>
+                                </div>
+                                <div class="summary-stat">
+                                    <span class="stat-label">Total Positions:</span>
+                                    <span class="stat-value">${stats.totalPositions}</span>
+                                </div>
+                            </div>
+                            <div class="portfolio-positions">
+                                ${positionsHTML}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            showPerformanceView() {
+                if (this.portfolio.length === 0) {
+                    alert('Your portfolio is empty. Add some investments first!');
+                    return;
+                }
+                // TODO: Implement performance view
+                console.log('Performance view:', this.portfolio);
+            }
+
+            exportPortfolio() {
+                if (this.portfolio.length === 0) {
+                    alert('Your portfolio is empty. Add some investments first!');
+                    return;
+                }
+
+                const csvContent = this.generatePortfolioCSV();
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `kees-portfolio-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }
+
+            generatePortfolioCSV() {
+                const headers = ['Symbol', 'Shares', 'Purchase Price', 'Purchase Date', 'Date Added'];
+                const rows = this.portfolio.map(inv => [
+                    inv.symbol,
+                    inv.shares,
+                    inv.purchasePrice,
+                    inv.purchaseDate,
+                    new Date(inv.dateAdded).toLocaleDateString()
+                ]);
+                
+                return [headers, ...rows].map(row => row.join(',')).join('\n');
+            }
+
+            deleteInvestment(investmentId) {
+                if (confirm('Are you sure you want to delete this investment?')) {
+                    this.portfolio = this.portfolio.filter(inv => inv.id !== investmentId);
+                    this.savePortfolio();
+                    this.updateDashboard();
+                    
+                    // Refresh portfolio view if it's open
+                    const portfolioModal = document.getElementById('portfolioModal');
+                    if (portfolioModal && portfolioModal.style.display === 'flex') {
+                        this.showPortfolioView();
+                    }
+                }
+            }
+
+            updateDashboard() {
+                // Update portfolio count
+                document.getElementById('portfolioCount').textContent = this.portfolio.length;
+
+                // Calculate and display comprehensive stats
+                if (this.portfolio.length > 0) {
+                    const stats = this.calculatePortfolioStats();
+                    
+                    // Update summary cards if they exist
+                    const summaryCards = document.querySelectorAll('.summary-card');
+                    if (summaryCards.length >= 3) {
+                        summaryCards[0].querySelector('h3').textContent = `$${stats.totalInvested.toLocaleString()}`;
+                        summaryCards[1].querySelector('h3').textContent = stats.uniqueStocks;
+                        summaryCards[2].querySelector('h3').textContent = stats.totalPositions;
+                    }
+                }
+            }
+
+            calculatePortfolioStats() {
+                const totalInvested = this.portfolio.reduce((sum, inv) => sum + (inv.shares * inv.purchasePrice), 0);
+                const uniqueStocks = new Set(this.portfolio.map(inv => inv.symbol)).size;
+                const totalPositions = this.portfolio.length;
+                
+                // Group investments by symbol for position consolidation
+                const positions = {};
+                this.portfolio.forEach(inv => {
+                    if (!positions[inv.symbol]) {
+                        positions[inv.symbol] = {
+                            symbol: inv.symbol,
+                            totalShares: 0,
+                            totalCost: 0,
+                            investments: []
+                        };
+                    }
+                    positions[inv.symbol].totalShares += inv.shares;
+                    positions[inv.symbol].totalCost += inv.shares * inv.purchasePrice;
+                    positions[inv.symbol].investments.push(inv);
+                });
+
+                // Calculate average cost per share for each position
+                Object.values(positions).forEach(position => {
+                    position.avgCostPerShare = position.totalCost / position.totalShares;
+                });
+
+                return {
+                    totalInvested,
+                    uniqueStocks,
+                    totalPositions,
+                    positions,
+                    portfolioValue: totalInvested, // For now, same as invested (no current prices)
+                    totalGainLoss: 0, // Will be calculated when we have current prices
+                    totalGainLossPercent: 0
+                };
+            }
+
+            calculatePositionValue(position, currentPrice = null) {
+                const invested = position.totalCost;
+                const shares = position.totalShares;
+                const avgCost = position.avgCostPerShare;
+                
+                if (currentPrice) {
+                    const currentValue = shares * currentPrice;
+                    const gainLoss = currentValue - invested;
+                    const gainLossPercent = (gainLoss / invested) * 100;
+                    
+                    return {
+                        invested,
+                        currentValue,
+                        gainLoss,
+                        gainLossPercent,
+                        shares,
+                        avgCost,
+                        currentPrice
+                    };
+                }
+                
+                return {
+                    invested,
+                    currentValue: invested, // No current price available
+                    gainLoss: 0,
+                    gainLossPercent: 0,
+                    shares,
+                    avgCost,
+                    currentPrice: avgCost // Use avg cost as placeholder
+                };
             }
 
             async analyzeStock() {
@@ -3743,7 +4119,7 @@
 
         // Initialize the system when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            window.financialSystem = new FinancialResearchSystem();
+            window.portfolioTracker = new PortfolioTracker();
         });
         //]]>
     </script>
