@@ -413,12 +413,26 @@
                             <span class="metric-value" id="totalStocks">0</span>
                         </div>
                         <div class="metric">
+                            <span class="metric-label">Total Investment</span>
+                            <span class="metric-value">€<span id="totalInvestment">0</span></span>
+                        </div>
+                        <div class="metric">
                             <span class="metric-label">Avg Kees Score</span>
                             <span class="metric-value" id="avgScore">-</span>
                         </div>
                         <div class="metric">
                             <span class="metric-label">Risk Level</span>
                             <span class="metric-value" id="portfolioRisk">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <h4>🥧 Investment Distribution</h4>
+                        <div style="position: relative; height: 200px;">
+                            <canvas id="portfolioChart" width="200" height="200"></canvas>
+                        </div>
+                        <div id="chartLegend" style="margin-top: 10px; font-size: 0.9rem;">
+                            <!-- Chart legend will be added here -->
                         </div>
                     </div>
                     
@@ -456,6 +470,25 @@
                 
                 <div id="comparisonResults" class="analysis-grid">
                     <!-- Comparison results will be added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Investment Amount Modal -->
+        <div id="investmentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; min-width: 400px;">
+                <h3 style="margin-bottom: 20px;">💰 Investment Amount</h3>
+                <p style="margin-bottom: 15px; color: #666;">How much do you want to invest in <span id="modalStockSymbol"></span>?</p>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Investment Amount (€)</label>
+                    <input type="number" id="investmentAmount" placeholder="e.g., 500" min="1" step="1" 
+                           style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1.1rem;">
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="cancelInvestmentBtn" class="mode-btn" style="background: #6c757d;">Cancel</button>
+                    <button id="confirmInvestmentBtn" class="search-btn">Add to Portfolio</button>
                 </div>
             </div>
         </div>
@@ -1230,10 +1263,12 @@
                 this.updatePortfolioCount();
             }
 
-            addStock(stockData, analysis, sentiment) {
+            addStock(stockData, analysis, sentiment, investmentAmount = 0) {
                 const stock = {
                     symbol: stockData.symbol,
                     currentPrice: stockData.currentPrice,
+                    investmentAmount: parseFloat(investmentAmount),
+                    shares: investmentAmount > 0 ? (investmentAmount / stockData.currentPrice).toFixed(4) : 0,
                     keesScore: this.calculateKeesScore(analysis, sentiment),
                     analysis: analysis,
                     sentiment: sentiment,
@@ -1296,9 +1331,10 @@
 
             getPortfolioStats() {
                 if (this.portfolio.length === 0) {
-                    return { totalStocks: 0, avgScore: 0, riskLevel: 'N/A' };
+                    return { totalStocks: 0, avgScore: 0, riskLevel: 'N/A', totalInvestment: 0 };
                 }
 
+                const totalInvestment = this.portfolio.reduce((sum, stock) => sum + stock.investmentAmount, 0);
                 const avgScore = this.portfolio.reduce((sum, stock) => sum + stock.keesScore, 0) / this.portfolio.length;
                 const avgVolatility = this.portfolio.reduce((sum, stock) => sum + stock.analysis.volatility, 0) / this.portfolio.length;
                 
@@ -1309,7 +1345,27 @@
                 return {
                     totalStocks: this.portfolio.length,
                     avgScore: Math.round(avgScore),
-                    riskLevel: riskLevel
+                    riskLevel: riskLevel,
+                    totalInvestment: Math.round(totalInvestment)
+                };
+            }
+
+            getPortfolioChartData() {
+                if (this.portfolio.length === 0) return null;
+
+                const totalInvestment = this.portfolio.reduce((sum, stock) => sum + stock.investmentAmount, 0);
+                
+                return {
+                    labels: this.portfolio.map(stock => stock.symbol),
+                    data: this.portfolio.map(stock => stock.investmentAmount),
+                    percentages: this.portfolio.map(stock => 
+                        totalInvestment > 0 ? ((stock.investmentAmount / totalInvestment) * 100).toFixed(1) : 0
+                    ),
+                    backgroundColor: [
+                        '#667eea', '#764ba2', '#f093fb', '#f5576c',
+                        '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+                        '#ffecd2', '#fcb69f', '#a8edea', '#fed6e3'
+                    ]
                 };
             }
 
@@ -1543,7 +1599,7 @@
 
                 // Portfolio controls
                 document.getElementById('addToPortfolioBtn').addEventListener('click', () => {
-                    this.addCurrentStockToPortfolio();
+                    this.showInvestmentModal();
                 });
 
                 document.getElementById('viewPortfolioBtn').addEventListener('click', () => {
@@ -1582,11 +1638,30 @@
                 document.getElementById('compareNowBtn').addEventListener('click', () => {
                     this.performComparison();
                 });
+
+                // Investment modal controls
+                document.getElementById('cancelInvestmentBtn').addEventListener('click', () => {
+                    this.hideInvestmentModal();
+                });
+
+                document.getElementById('confirmInvestmentBtn').addEventListener('click', () => {
+                    this.confirmInvestment();
+                });
+
+                // Allow Enter key in investment amount input
+                document.getElementById('investmentAmount').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.confirmInvestment();
+                    }
+                });
             }
 
             async analyzeStock() {
                 const symbol = document.getElementById('stockSymbol').value.toUpperCase();
                 if (!symbol) return;
+
+                // Reset all agent statuses first
+                this.resetAgentStatuses();
 
                 // Show results section and loading
                 document.getElementById('resultsSection').classList.add('show');
@@ -1595,6 +1670,7 @@
                 
                 // Disable form
                 document.getElementById('analyzeBtn').disabled = true;
+                document.getElementById('analyzeBtn').textContent = '🔄 Analyzing...';
 
                 try {
                     // Step 1: Data Agent
@@ -1623,8 +1699,11 @@
                 } catch (error) {
                     console.error('Analysis failed:', error);
                     this.showError('Analysis failed. Please try again.');
+                    this.resetAgentStatuses();
                 } finally {
+                    // Re-enable form
                     document.getElementById('analyzeBtn').disabled = false;
+                    document.getElementById('analyzeBtn').textContent = '🔍 Analyze Stock';
                     document.getElementById('loadingIndicator').style.display = 'none';
                 }
             }
@@ -1696,22 +1775,42 @@
                 });
             }
 
-            // Portfolio Management Methods
-            addCurrentStockToPortfolio() {
+            // Investment Modal Methods
+            showInvestmentModal() {
                 if (!this.currentAnalysis) {
                     alert('Please analyze a stock first before adding to portfolio');
+                    return;
+                }
+
+                document.getElementById('modalStockSymbol').textContent = this.currentAnalysis.stockData.symbol;
+                document.getElementById('investmentAmount').value = '';
+                document.getElementById('investmentModal').style.display = 'block';
+                document.getElementById('investmentAmount').focus();
+            }
+
+            hideInvestmentModal() {
+                document.getElementById('investmentModal').style.display = 'none';
+            }
+
+            confirmInvestment() {
+                const amount = parseFloat(document.getElementById('investmentAmount').value);
+                
+                if (!amount || amount <= 0) {
+                    alert('Please enter a valid investment amount');
                     return;
                 }
 
                 const success = this.portfolioManager.addStock(
                     this.currentAnalysis.stockData,
                     this.currentAnalysis.analysis,
-                    this.currentAnalysis.sentiment
+                    this.currentAnalysis.sentiment,
+                    amount
                 );
 
                 if (success) {
-                    alert(`${this.currentAnalysis.stockData.symbol} added to portfolio!`);
+                    alert(`€${amount} investment in ${this.currentAnalysis.stockData.symbol} added to portfolio!`);
                     this.updatePortfolioButtons();
+                    this.hideInvestmentModal();
                 }
             }
 
@@ -1731,8 +1830,12 @@
                 
                 // Update stats
                 document.getElementById('totalStocks').textContent = stats.totalStocks;
+                document.getElementById('totalInvestment').textContent = stats.totalInvestment;
                 document.getElementById('avgScore').textContent = stats.avgScore;
                 document.getElementById('portfolioRisk').textContent = stats.riskLevel;
+
+                // Update pie chart
+                this.updatePortfolioChart();
 
                 // Update stock list
                 const stocksContainer = document.getElementById('portfolioStocks');
@@ -1753,9 +1856,76 @@
                 this.updateComparisonDropdowns();
             }
 
+            updatePortfolioChart() {
+                const chartData = this.portfolioManager.getPortfolioChartData();
+                const canvas = document.getElementById('portfolioChart');
+                const ctx = canvas.getContext('2d');
+
+                // Clear previous chart
+                if (this.portfolioChartInstance) {
+                    this.portfolioChartInstance.destroy();
+                }
+
+                if (!chartData || chartData.data.length === 0) {
+                    // Show empty state
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#ccc';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No investments yet', canvas.width / 2, canvas.height / 2);
+                    document.getElementById('chartLegend').innerHTML = '';
+                    return;
+                }
+
+                // Create pie chart
+                this.portfolioChartInstance = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [{
+                            data: chartData.data,
+                            backgroundColor: chartData.backgroundColor.slice(0, chartData.labels.length),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false // We'll create custom legend
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const percentage = chartData.percentages[context.dataIndex];
+                                        return `${context.label}: €${context.raw} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Create custom legend
+                const legendHTML = chartData.labels.map((label, index) => `
+                    <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                        <div style="width: 12px; height: 12px; background: ${chartData.backgroundColor[index]}; margin-right: 8px; border-radius: 2px;"></div>
+                        <span style="flex: 1;">${label}</span>
+                        <span style="font-weight: bold;">${chartData.percentages[index]}%</span>
+                    </div>
+                `).join('');
+                
+                document.getElementById('chartLegend').innerHTML = legendHTML;
+            }
+
             generatePortfolioStockHTML(stock) {
                 const recommendation = stock.keesScore >= 70 ? 'Buy' : stock.keesScore >= 50 ? 'Hold' : 'Sell';
                 const recommendationClass = stock.keesScore >= 70 ? 'recommendation' : stock.keesScore >= 50 ? 'warning' : 'danger';
+                const currentValue = (parseFloat(stock.shares) * stock.currentPrice).toFixed(2);
+                const gainLoss = (currentValue - stock.investmentAmount).toFixed(2);
+                const gainLossPercent = stock.investmentAmount > 0 ? ((gainLoss / stock.investmentAmount) * 100).toFixed(1) : '0.0';
                 
                 return `
                     <div class="analysis-card">
@@ -1764,20 +1934,30 @@
                                     style="float: right; background: #dc3545; padding: 2px 8px; font-size: 0.8rem;">✕</button>
                         </h4>
                         <div class="metric">
+                            <span class="metric-label">Investment</span>
+                            <span class="metric-value">€${stock.investmentAmount}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Shares</span>
+                            <span class="metric-value">${stock.shares}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Current Value</span>
+                            <span class="metric-value">€${currentValue}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Gain/Loss</span>
+                            <span class="metric-value" style="color: ${gainLoss >= 0 ? '#28a745' : '#dc3545'}">
+                                €${gainLoss} (${gainLossPercent}%)
+                            </span>
+                        </div>
+                        <div class="metric">
                             <span class="metric-label">Kees Score</span>
                             <span class="metric-value">${stock.keesScore}/100</span>
                         </div>
                         <div class="metric">
-                            <span class="metric-label">Price</span>
-                            <span class="metric-value">$${stock.currentPrice}</span>
-                        </div>
-                        <div class="metric">
                             <span class="metric-label">Trend</span>
                             <span class="metric-value">${stock.analysis.trend}</span>
-                        </div>
-                        <div class="metric">
-                            <span class="metric-label">Risk</span>
-                            <span class="metric-value">${stock.analysis.volatility > 40 ? 'High' : stock.analysis.volatility > 20 ? 'Medium' : 'Low'}</span>
                         </div>
                         <div class="recommendation ${recommendationClass}" style="margin-top: 10px; padding: 8px; border-radius: 5px;">
                             <strong>${recommendation}</strong>
