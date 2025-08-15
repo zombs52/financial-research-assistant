@@ -189,6 +189,139 @@
             padding: 20px;
         }
 
+        /* News Articles Styling */
+        .news-articles {
+            margin-top: 15px;
+        }
+
+        .news-article {
+            border-left: 3px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .news-article:hover {
+            transform: translateX(2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .news-article[data-impact="high"] {
+            border-left-color: #dc3545;
+        }
+
+        .news-article[data-impact="medium"] {
+            border-left-color: #ffc107;
+        }
+
+        .news-article[data-impact="low"] {
+            border-left-color: #28a745;
+        }
+
+        .news-header {
+            margin-bottom: 10px;
+        }
+
+        .news-title {
+            margin: 0 0 8px 0;
+            font-size: 1.1rem;
+            line-height: 1.4;
+        }
+
+        .news-title a {
+            color: #333;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .news-title a:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        .news-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .news-source {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .news-time {
+            color: #6c757d;
+        }
+
+        .news-sentiment {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .sentiment-positive {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .sentiment-negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .sentiment-neutral {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .news-summary {
+            margin: 10px 0;
+            line-height: 1.5;
+            color: #495057;
+        }
+
+        .news-impact {
+            margin-top: 10px;
+        }
+
+        .impact-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .impact-high {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .impact-medium {
+            background: #feca57;
+            color: #333;
+        }
+
+        .impact-low {
+            background: #48dbfb;
+            color: #333;
+        }
+
+        .news-disclaimer {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+            color: #6c757d;
+        }
+
         .metric {
             display: flex;
             justify-content: space-between;
@@ -1115,18 +1248,18 @@
                 this.name = "Report Agent";
             }
 
-            async generateReport(stockData, analysis, sentiment, mode) {
+            async generateReport(stockData, analysis, sentiment, mode, news = null, fundamentals = null) {
                 // Simulate processing time
                 await this.delay(800);
                 
                 if (mode === 'beginner') {
-                    return this.generateBeginnerReport(stockData, analysis, sentiment);
+                    return this.generateBeginnerReport(stockData, analysis, sentiment, news, fundamentals);
                 } else {
-                    return this.generateAdvancedReport(stockData, analysis, sentiment);
+                    return this.generateAdvancedReport(stockData, analysis, sentiment, news, fundamentals);
                 }
             }
 
-            generateBeginnerReport(stockData, analysis, sentiment) {
+            generateBeginnerReport(stockData, analysis, sentiment, news = null, fundamentals = null) {
                 const recommendation = this.getBeginnerRecommendation(analysis, sentiment);
                 
                 return {
@@ -1193,6 +1326,8 @@
                             </div>
                         </div>
                         
+                        ${news ? this.generateNewsSection(news.articles, 'beginner') : ''}
+                        
                         <div class="analysis-card">
                             <h4>🎯 Simple Explanation</h4>
                             <p><strong>What this means:</strong> ${this.explainInSimpleTerms(stockData, analysis, sentiment)}</p>
@@ -1204,7 +1339,7 @@
                 };
             }
 
-            generateAdvancedReport(stockData, analysis, sentiment) {
+            generateAdvancedReport(stockData, analysis, sentiment, news = null, fundamentals = null) {
                 const recommendation = this.getAdvancedRecommendation(analysis, sentiment);
                 
                 return {
@@ -1304,6 +1439,8 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        ${news ? this.generateNewsSection(news.articles, 'advanced') : ''}
                     `,
                     text: recommendation.summary
                 };
@@ -1413,6 +1550,48 @@
                 if (score >= 70) return 'looks like a good opportunity';
                 if (score >= 50) return 'has mixed signals';
                 return 'shows some warning signs';
+            }
+
+            generateNewsSection(articles, mode = 'advanced') {
+                if (!articles || articles.length === 0) {
+                    return '<div class="analysis-card"><h4>📰 Latest News</h4><p>No recent news available</p></div>';
+                }
+
+                const displayCount = mode === 'beginner' ? 3 : 5;
+                const displayArticles = articles.slice(0, displayCount);
+
+                return `
+                    <div class="analysis-card">
+                        <h4>📰 Latest News & Updates</h4>
+                        <div class="news-articles">
+                            ${displayArticles.map(article => `
+                                <div class="news-article" data-impact="${article.impact}">
+                                    <div class="news-header">
+                                        <h5 class="news-title">
+                                            <a href="${article.url}" target="_blank" rel="noopener noreferrer">
+                                                ${article.title}
+                                            </a>
+                                        </h5>
+                                        <div class="news-meta">
+                                            <span class="news-source">${article.source}</span>
+                                            <span class="news-time">${article.publishedAgo}</span>
+                                            <span class="news-sentiment sentiment-${article.sentiment}">${article.sentiment}</span>
+                                        </div>
+                                    </div>
+                                    <p class="news-summary">${article.summary}</p>
+                                    <div class="news-impact">
+                                        <span class="impact-badge impact-${article.impact}">
+                                            ${article.impact.toUpperCase()} IMPACT
+                                        </span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="news-disclaimer">
+                            <small>📡 Click articles to read more. News sources are simulated for demo purposes.</small>
+                        </div>
+                    </div>
+                `;
             }
 
             delay(ms) {
@@ -1760,8 +1939,10 @@
                         sentiment: template.sentiment,
                         source: template.source,
                         publishedAt: publishTime.toISOString(),
+                        publishedAgo: this.getTimeAgo(publishTime),
                         impact: template.impact,
-                        url: `#news-${i + 1}`
+                        url: this.generateRealisticURL(template.source, symbol),
+                        id: `news-${symbol}-${i + 1}`
                     });
                 }
 
@@ -1846,6 +2027,33 @@
                 if (average > 0.2) return 'Positive';
                 if (average < -0.2) return 'Negative';
                 return 'Neutral';
+            }
+
+            generateRealisticURL(source, symbol) {
+                const sourceUrls = {
+                    'Financial Times': 'https://www.ft.com/content/financial-news',
+                    'Bloomberg': 'https://www.bloomberg.com/news/articles',
+                    'Reuters': 'https://www.reuters.com/business/finance',
+                    'MarketWatch': 'https://www.marketwatch.com/story',
+                    'Wall Street Journal': 'https://www.wsj.com/articles',
+                    'CNBC': 'https://www.cnbc.com/quotes'
+                };
+                
+                const baseUrl = sourceUrls[source] || 'https://finance.yahoo.com/news';
+                const randomId = Math.random().toString(36).substr(2, 9);
+                return `${baseUrl}/${symbol.toLowerCase()}-stock-${randomId}`;
+            }
+
+            getTimeAgo(publishTime) {
+                const now = new Date();
+                const diffMs = now - publishTime;
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffDays = Math.floor(diffHours / 24);
+                
+                if (diffHours < 1) return 'Less than 1 hour ago';
+                if (diffHours < 24) return `${diffHours} hours ago`;
+                if (diffDays === 1) return '1 day ago';
+                return `${diffDays} days ago`;
             }
 
             delay(ms) {
@@ -2207,7 +2415,7 @@
 
                     // Step 6: Report Agent
                     this.updateAgentStatus('reportAgentStatus', 'working', 'Generating report...');
-                    const report = await this.agents.report.generateReport(stockData, analysis, sentiment, this.mode);
+                    const report = await this.agents.report.generateReport(stockData, analysis, sentiment, this.mode, news, fundamentals);
                     this.updateAgentStatus('reportAgentStatus', 'complete', 'Report ready');
 
                     // Display results
