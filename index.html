@@ -14,15 +14,31 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #475569 75%, #64748b 100%);
             min-height: 100vh;
             color: #333;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            position: relative;
+            z-index: 1;
         }
 
         .header {
@@ -42,11 +58,13 @@
         }
 
         .search-section {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
             margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .search-form {
@@ -73,18 +91,37 @@
 
         .search-btn {
             padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 1.1rem;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .search-btn:hover::before {
+            left: 100%;
         }
 
         .search-btn:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
         }
 
         .search-btn:disabled {
@@ -154,15 +191,22 @@
         .status-error { background: #f8d7da; color: #721c24; }
 
         .results-section {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
             overflow: hidden;
             display: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
         }
 
         .results-section.show {
             display: block;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .results-header {
@@ -231,14 +275,16 @@
         }
 
         .news-title a {
-            color: #333;
+            color: #1e293b;
             text-decoration: none;
-            transition: color 0.2s;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-weight: 600;
         }
 
         .news-title a:hover {
-            color: #667eea;
-            text-decoration: underline;
+            color: #3b82f6;
+            text-decoration: none;
         }
 
         .news-meta {
@@ -320,6 +366,157 @@
             border-top: 1px solid #dee2e6;
             text-align: center;
             color: #6c757d;
+        }
+
+        /* Luxury Modal Styling */
+        .luxury-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .luxury-modal.show {
+            opacity: 1;
+        }
+
+        .luxury-modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+            backdrop-filter: blur(10px);
+        }
+
+        .luxury-modal-content {
+            position: relative;
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .luxury-modal.show .luxury-modal-content {
+            transform: scale(1);
+        }
+
+        .luxury-modal-header {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: white;
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .luxury-modal-header h3 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .luxury-close-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .luxury-close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .luxury-modal-meta {
+            padding: 20px 32px;
+            background: #f1f5f9;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .news-source-badge {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .news-time-badge {
+            background: linear-gradient(135deg, #64748b, #475569);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .news-sentiment-badge {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .news-sentiment-badge.positive {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .news-sentiment-badge.negative {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .news-sentiment-badge.neutral {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        .luxury-modal-body {
+            padding: 32px;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #374151;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .luxury-modal-footer {
+            padding: 20px 32px;
+            background: #f8fafc;
+            text-align: center;
+            color: #6b7280;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
         }
 
         .metric {
@@ -617,7 +814,7 @@
                     type="text" 
                     class="search-input" 
                     id="stockSymbol" 
-                    placeholder="Enter stock symbol (e.g., AAPL, TSLA, ASML)" 
+                    placeholder="Enter symbol or company name (e.g., AAPL, Apple, Tesla, Microsoft)" 
                     required
                 >
                 <button type="submit" class="search-btn" id="analyzeBtn">
@@ -786,6 +983,28 @@
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button id="cancelInvestmentBtn" class="mode-btn" style="background: #6c757d;">Cancel</button>
                     <button id="confirmInvestmentBtn" class="search-btn">Add to Portfolio</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- News Article Modal -->
+        <div id="newsModal" class="luxury-modal" style="display: none;">
+            <div class="luxury-modal-backdrop"></div>
+            <div class="luxury-modal-content">
+                <div class="luxury-modal-header">
+                    <h3 id="newsModalTitle">Article Title</h3>
+                    <button id="closeNewsModal" class="luxury-close-btn">&times;</button>
+                </div>
+                <div class="luxury-modal-meta">
+                    <span id="newsModalSource" class="news-source-badge"></span>
+                    <span id="newsModalTime" class="news-time-badge"></span>
+                    <span id="newsModalSentiment" class="news-sentiment-badge"></span>
+                </div>
+                <div class="luxury-modal-body">
+                    <p id="newsModalContent"></p>
+                </div>
+                <div class="luxury-modal-footer">
+                    <small>📰 Simulated news content for demonstration purposes</small>
                 </div>
             </div>
         </div>
@@ -1568,7 +1787,7 @@
                                 <div class="news-article" data-impact="${article.impact}">
                                     <div class="news-header">
                                         <h5 class="news-title">
-                                            <a href="${article.url}" target="_blank" rel="noopener noreferrer">
+                                            <a href="#" class="news-link" data-article-id="${article.id}">
                                                 ${article.title}
                                             </a>
                                         </h5>
@@ -1588,7 +1807,7 @@
                             `).join('')}
                         </div>
                         <div class="news-disclaimer">
-                            <small>📡 Click articles to read more. News sources are simulated for demo purposes.</small>
+                            <small>📡 Click articles to read full content. News data simulated for demonstration.</small>
                         </div>
                     </div>
                 `;
@@ -1936,12 +2155,12 @@
                     articles.push({
                         title: template.title.replace('{symbol}', symbol),
                         summary: template.summary.replace('{symbol}', symbol),
+                        fullContent: template.fullContent.replace('{symbol}', symbol).replace('{company}', companyName),
                         sentiment: template.sentiment,
                         source: template.source,
                         publishedAt: publishTime.toISOString(),
                         publishedAgo: this.getTimeAgo(publishTime),
                         impact: template.impact,
-                        url: this.generateRealisticURL(template.source, symbol),
                         id: `news-${symbol}-${i + 1}`
                     });
                 }
@@ -1971,6 +2190,7 @@
                     {
                         title: `${companyName} Reports Strong Quarterly Earnings Beat`,
                         summary: `{symbol} exceeded analyst expectations with better-than-expected revenue and profit margins, driving investor confidence.`,
+                        fullContent: `{company} delivered outstanding quarterly results that significantly exceeded Wall Street expectations, with revenue growth outpacing analyst forecasts by 12%. The company reported earnings per share of $2.85, beating the consensus estimate of $2.41. Management attributed the strong performance to robust demand across key markets, operational efficiency improvements, and strategic investments in innovation. CEO statements highlighted the company's resilient business model and optimistic outlook for continued growth in the coming quarters. Institutional investors responded positively to the results, with several major investment firms upgrading their price targets and reaffirming buy ratings.`,
                         sentiment: 'positive',
                         source: 'Financial Times',
                         impact: 'high'
@@ -1978,6 +2198,7 @@
                     {
                         title: `Analysts Upgrade ${symbol} Price Target Following Innovation Announcement`,
                         summary: `Major investment firms raise price targets for {symbol} citing breakthrough technology and market expansion potential.`,
+                        fullContent: `Leading investment analysts from Goldman Sachs, Morgan Stanley, and JPMorgan have upgraded their price targets for {symbol} following the company's recent breakthrough innovation announcement. The technology advancement is expected to create significant competitive advantages and open new revenue streams. Goldman Sachs raised its target from $185 to $220, citing the innovation's potential to capture 15-20% additional market share over the next 18 months. The announcement has generated considerable excitement among institutional investors, with trading volumes up 40% since the news broke. Industry experts believe this positions {company} as a market leader in emerging technologies.`,
                         sentiment: 'positive',
                         source: 'Bloomberg',
                         impact: 'medium'
@@ -1985,6 +2206,7 @@
                     {
                         title: `${companyName} Faces Regulatory Scrutiny Over Market Practices`,
                         summary: `Government agencies launch investigation into {symbol}'s business practices, potentially impacting future operations.`,
+                        fullContent: `The Securities and Exchange Commission has initiated a formal investigation into {company}'s market practices, focusing on potential anti-competitive behavior and pricing strategies. The probe, which began last month, examines the company's relationships with suppliers and distribution channels. Legal experts suggest the investigation could result in regulatory changes or financial penalties if violations are found. {company} has stated it is cooperating fully with regulators and believes its practices comply with all applicable laws. The uncertainty has created some volatility in the stock price, though long-term investors remain confident in the company's fundamentals and management's ability to navigate regulatory challenges.`,
                         sentiment: 'negative',
                         source: 'Reuters',
                         impact: 'medium'
@@ -1992,6 +2214,7 @@
                     {
                         title: `${symbol} Stock Volatile Amid Market Uncertainty`,
                         summary: `{symbol} shares fluctuate as investors weigh global economic conditions and company-specific fundamentals.`,
+                        fullContent: `{symbol} shares have experienced increased volatility over the past trading sessions as investors grapple with mixed economic signals and uncertainty about future interest rates. The stock has traded in a range between $165 and $178, reflecting the broader market's indecision. While some investors remain cautious about macroeconomic headwinds including inflation concerns and geopolitical tensions, others see current price levels as attractive entry points. Technical analysts note that the stock is testing key support levels, and a break above $180 could signal renewed bullish momentum. The company's fundamentals remain solid, with strong cash flow and a robust balance sheet providing downside protection.`,
                         sentiment: 'neutral',
                         source: 'MarketWatch',
                         impact: 'low'
@@ -1999,6 +2222,7 @@
                     {
                         title: `Institutional Investors Increase Holdings in ${symbol}`,
                         summary: `Large pension funds and investment firms boost their positions in {symbol}, signaling long-term confidence.`,
+                        fullContent: `Major institutional investors have significantly increased their holdings in {symbol} during the latest quarter, according to recent SEC filings. Notable increases include BlackRock raising its stake by 8.5%, Vanguard adding 6.2% to its position, and the California State Teachers' Retirement System initiating a new $2.3 billion position. These moves signal strong institutional confidence in {company}'s long-term growth prospects and strategic direction. Portfolio managers cite the company's strong competitive position, consistent execution, and attractive valuation as key factors driving their investment decisions. The increased institutional ownership provides additional stability and long-term support for the stock price.`,
                         sentiment: 'positive',
                         source: 'Wall Street Journal',
                         impact: 'medium'
@@ -2006,6 +2230,7 @@
                     {
                         title: `${companyName} Announces Strategic Partnership Deal`,
                         summary: `{symbol} enters major partnership agreement expected to boost revenue and expand market reach significantly.`,
+                        fullContent: `{company} has announced a landmark strategic partnership agreement valued at $4.2 billion over five years, marking one of the largest deals in the company's history. The partnership will combine {company}'s technological expertise with its partner's global distribution network, creating new opportunities in emerging markets. Management expects the collaboration to contribute $800 million in additional annual revenue by year three. The deal includes joint research and development initiatives, shared manufacturing capabilities, and coordinated go-to-market strategies. Industry analysts view this as a transformative partnership that strengthens {company}'s competitive position and accelerates its international expansion plans.`,
                         sentiment: 'positive',
                         source: 'CNBC',
                         impact: 'high'
@@ -2289,6 +2514,17 @@
                 this.portfolioManager = new PortfolioManager();
                 this.comparisonManager = new ComparisonManager(this.portfolioManager);
                 this.currentAnalysis = null; // Store current analysis for portfolio addition
+                this.currentNews = null; // Store current news for modal access
+                
+                // Company name to symbol mapping for smart search
+                this.companyMap = {
+                    'apple': 'AAPL', 'tesla': 'TSLA', 'google': 'GOOGL', 'alphabet': 'GOOGL',
+                    'microsoft': 'MSFT', 'amazon': 'AMZN', 'meta': 'META', 'facebook': 'META',
+                    'netflix': 'NFLX', 'nvidia': 'NVDA', 'asml': 'ASML', 'shell': 'SHELL',
+                    'adyen': 'ADYEN', 'amd': 'AMD', 'intel': 'INTC', 'coinbase': 'COIN',
+                    'zoom': 'ZM', 'uber': 'UBER', 'airbnb': 'ABNB', 'spotify': 'SPOT'
+                };
+                
                 this.initializeEventListeners();
             }
 
@@ -2363,6 +2599,28 @@
                     this.confirmInvestment();
                 });
 
+                // News modal functionality
+                document.getElementById('closeNewsModal').addEventListener('click', () => {
+                    this.hideNewsModal();
+                });
+
+                // Close modal when clicking backdrop
+                document.querySelector('.luxury-modal-backdrop').addEventListener('click', () => {
+                    this.hideNewsModal();
+                });
+
+                // Event delegation for news article clicks
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('news-link')) {
+                        e.preventDefault();
+                        const articleId = e.target.dataset.articleId;
+                        const article = this.findArticleById(articleId);
+                        if (article) {
+                            this.showNewsModal(article);
+                        }
+                    }
+                });
+
                 // Allow Enter key in investment amount input
                 document.getElementById('investmentAmount').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
@@ -2372,8 +2630,13 @@
             }
 
             async analyzeStock() {
-                const symbol = document.getElementById('stockSymbol').value.toUpperCase();
-                if (!symbol) return;
+                const userInput = document.getElementById('stockSymbol').value.trim();
+                if (!userInput) return;
+                
+                const symbol = this.resolveSymbol(userInput);
+                
+                // Update the input field to show the resolved symbol
+                document.getElementById('stockSymbol').value = symbol;
 
                 // Reset all agent statuses first
                 this.resetAgentStatuses();
@@ -2406,6 +2669,7 @@
                     // Step 4: News Agent
                     this.updateAgentStatus('newsAgentStatus', 'working', 'Fetching news...');
                     const news = await this.agents.news.fetchNews(symbol);
+                    this.currentNews = news; // Store for modal access
                     this.updateAgentStatus('newsAgentStatus', 'complete', 'News retrieved');
 
                     // Step 5: Fundamentals Agent
@@ -2709,6 +2973,59 @@
 
             hideInvestmentModal() {
                 document.getElementById('investmentModal').style.display = 'none';
+            }
+
+            showNewsModal(article) {
+                document.getElementById('newsModalTitle').textContent = article.title;
+                document.getElementById('newsModalSource').textContent = article.source;
+                document.getElementById('newsModalTime').textContent = article.publishedAgo;
+                
+                const sentimentBadge = document.getElementById('newsModalSentiment');
+                sentimentBadge.textContent = article.sentiment.toUpperCase();
+                sentimentBadge.className = `news-sentiment-badge ${article.sentiment}`;
+                
+                document.getElementById('newsModalContent').textContent = article.fullContent;
+                
+                const modal = document.getElementById('newsModal');
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('show'), 10);
+            }
+
+            hideNewsModal() {
+                const modal = document.getElementById('newsModal');
+                modal.classList.remove('show');
+                setTimeout(() => modal.style.display = 'none', 300);
+            }
+
+            findArticleById(articleId) {
+                if (this.currentNews && this.currentNews.articles) {
+                    return this.currentNews.articles.find(article => article.id === articleId);
+                }
+                return null;
+            }
+
+            resolveSymbol(input) {
+                const cleanInput = input.trim().toLowerCase();
+                
+                // Check if it's already a valid symbol (assume 1-5 uppercase letters)
+                if (/^[A-Z]{1,5}$/.test(input.trim())) {
+                    return input.trim().toUpperCase();
+                }
+                
+                // Look up company name in mapping
+                if (this.companyMap[cleanInput]) {
+                    return this.companyMap[cleanInput];
+                }
+                
+                // Try partial matches for flexibility
+                for (const [company, symbol] of Object.entries(this.companyMap)) {
+                    if (company.includes(cleanInput) || cleanInput.includes(company)) {
+                        return symbol;
+                    }
+                }
+                
+                // If no match found, return original input (might still work with API)
+                return input.trim().toUpperCase();
             }
 
             confirmInvestment() {
