@@ -1036,8 +1036,8 @@
                     }
 
                     if (!data) {
-                        // No real data available - be honest about it
-                        throw new Error(`Unable to fetch real stock data for ${symbol}. All free APIs are currently unavailable or rate limited. Please try again later.`);
+                        // Be completely honest about the situation
+                        throw new Error(`Real financial data is currently unavailable. Free APIs have strict limits and CORS restrictions. For real-time data, consider: 1) Getting a free Alpha Vantage API key, 2) Using Bloomberg/Reuters professionally, or 3) Using this as a portfolio tracker with manual price entry.`);
                     }
 
                     this.cache.set(cacheKey, data);
@@ -1128,45 +1128,85 @@
             }
 
             async fetchFromYahooFinance(symbol) {
-                // Yahoo Finance doesn't require API key and is very reliable
-                // Use CORS proxy to avoid browser blocking
-                try {
-                    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`;
-                    const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
-                    const response = await fetch(proxiedUrl);
-                    
-                    if (!response.ok) {
-                        throw new Error(`Yahoo Finance HTTP ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-                    
-                    if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-                        throw new Error('No data from Yahoo Finance');
-                    }
+                // Try multiple approaches to get Yahoo Finance data
+                const approaches = [
+                    // Approach 1: Different CORS proxy
+                    () => this.fetchViaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`, 'https://corsproxy.io/?'),
+                    // Approach 2: Another CORS proxy
+                    () => this.fetchViaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`, 'https://cors-anywhere.herokuapp.com/'),
+                    // Approach 3: Yahoo Finance quote API
+                    () => this.fetchViaProxy(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`, 'https://corsproxy.io/?')
+                ];
 
-                    const result = data.chart.result[0];
-                    const meta = result.meta;
-                    
-                    return {
-                        symbol: symbol,
-                        currentPrice: meta.regularMarketPrice || meta.previousClose,
-                        previousClose: meta.previousClose,
-                        dailyChange: ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose * 100).toFixed(2),
-                        volume: meta.regularMarketVolume || 0,
-                        high: meta.regularMarketDayHigh,
-                        low: meta.regularMarketDayLow,
-                        marketCap: meta.marketCap,
-                        currency: meta.currency,
-                        exchangeName: meta.exchangeName,
-                        lastUpdate: new Date().toISOString(),
-                        dataSource: 'Yahoo Finance (Real Data)',
-                        isReal: true
-                    };
-                } catch (error) {
-                    console.error('Yahoo Finance error:', error);
-                    throw error;
+                for (let i = 0; i < approaches.length; i++) {
+                    try {
+                        console.log(`Yahoo Finance attempt ${i + 1}/3`);
+                        const response = await approaches[i]();
+                        
+                        if (!response.ok) {
+                            throw new Error(`Yahoo Finance HTTP ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        // Handle different Yahoo Finance API formats
+                        if (data.chart && data.chart.result && data.chart.result.length > 0) {
+                            // Chart API format
+                            const result = data.chart.result[0];
+                            const meta = result.meta;
+                            
+                            return {
+                                symbol: symbol,
+                                currentPrice: meta.regularMarketPrice || meta.previousClose,
+                                previousClose: meta.previousClose,
+                                dailyChange: ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose * 100).toFixed(2),
+                                volume: meta.regularMarketVolume || 0,
+                                high: meta.regularMarketDayHigh,
+                                low: meta.regularMarketDayLow,
+                                marketCap: meta.marketCap,
+                                currency: meta.currency,
+                                exchangeName: meta.exchangeName,
+                                lastUpdate: new Date().toISOString(),
+                                dataSource: 'Yahoo Finance (Real Data)',
+                                isReal: true
+                            };
+                        } else if (data.quoteResponse && data.quoteResponse.result && data.quoteResponse.result.length > 0) {
+                            // Quote API format
+                            const quote = data.quoteResponse.result[0];
+                            
+                            return {
+                                symbol: symbol,
+                                currentPrice: quote.regularMarketPrice,
+                                previousClose: quote.regularMarketPreviousClose,
+                                dailyChange: ((quote.regularMarketPrice - quote.regularMarketPreviousClose) / quote.regularMarketPreviousClose * 100).toFixed(2),
+                                volume: quote.regularMarketVolume || 0,
+                                high: quote.regularMarketDayHigh,
+                                low: quote.regularMarketDayLow,
+                                marketCap: quote.marketCap,
+                                currency: quote.currency,
+                                exchangeName: quote.fullExchangeName,
+                                lastUpdate: new Date().toISOString(),
+                                dataSource: 'Yahoo Finance (Real Data)',
+                                isReal: true
+                            };
+                        } else {
+                            throw new Error('Invalid data format from Yahoo Finance');
+                        }
+                    } catch (error) {
+                        console.warn(`Yahoo Finance attempt ${i + 1} failed:`, error);
+                        if (i === approaches.length - 1) {
+                            throw error; // Last attempt failed
+                        }
+                        // Continue to next approach
+                    }
                 }
+                
+                throw new Error('All Yahoo Finance approaches failed');
+            }
+
+            async fetchViaProxy(url, proxyUrl) {
+                const proxiedUrl = proxyUrl + encodeURIComponent(url);
+                return await fetch(proxiedUrl);
             }
 
             parseAlphaVantageQuote(quote, symbol) {
