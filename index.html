@@ -1036,16 +1036,16 @@
                     }
 
                     if (!data) {
-                        // Final fallback: Demo data for portfolio showcase
-                        data = this.generateDemoData(symbol);
+                        // No real data available - be honest about it
+                        throw new Error(`Unable to fetch real stock data for ${symbol}. All free APIs are currently unavailable or rate limited. Please try again later.`);
                     }
 
                     this.cache.set(cacheKey, data);
                     return data;
 
                 } catch (error) {
-                    console.warn('Data fetch failed, using demo data:', error);
-                    return this.generateDemoData(symbol);
+                    console.error('Data fetch failed:', error);
+                    throw new Error(`Failed to fetch real stock data for ${symbol}: ${error.message}`);
                 }
             }
 
@@ -1073,20 +1073,92 @@
             }
 
             async fetchFromFreeAPI(symbol) {
-                // Free financial data API - always works
+                // Try Yahoo Finance first (no API key needed)
                 try {
-                    // Using Financial Modeling Prep free tier (no signup required)
-                    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?serietype=line&apikey=demo`;
+                    console.log('Trying Yahoo Finance for', symbol);
+                    const yahooData = await this.fetchFromYahooFinance(symbol);
+                    if (yahooData) {
+                        return yahooData;
+                    }
+                } catch (error) {
+                    console.warn('Yahoo Finance failed:', error);
+                }
+
+                // Fallback to Financial Modeling Prep
+                try {
+                    console.log('Trying Financial Modeling Prep for', symbol);
+                    const url = `https://financialmodelingprep.com/api/v3/quote/${symbol}?apikey=demo`;
                     const response = await fetch(url);
                     const data = await response.json();
                     
-                    if (data.historical && data.historical.length > 0) {
-                        return this.parseFMPData(data, symbol);
+                    if (data && data.length > 0 && data[0].price) {
+                        return this.parseFMPQuote(data[0], symbol);
                     }
                     return null;
                 } catch (error) {
                     console.warn('Free API fetch failed:', error);
                     return null;
+                }
+            }
+
+            parseFMPQuote(quote, symbol) {
+                try {
+                    return {
+                        symbol: symbol,
+                        currentPrice: quote.price,
+                        previousClose: quote.previousClose,
+                        dailyChange: quote.changesPercentage,
+                        volume: quote.volume,
+                        high: quote.dayHigh,
+                        low: quote.dayLow,
+                        marketCap: quote.marketCap,
+                        lastUpdate: new Date().toISOString(),
+                        dataSource: 'Financial Modeling Prep (Real Data)',
+                        isReal: true
+                    };
+                } catch (error) {
+                    console.error('Error parsing FMP data:', error);
+                    return null;
+                }
+            }
+
+            async fetchFromYahooFinance(symbol) {
+                // Yahoo Finance doesn't require API key and is very reliable
+                try {
+                    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`;
+                    const response = await fetch(yahooUrl);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Yahoo Finance HTTP ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+                        throw new Error('No data from Yahoo Finance');
+                    }
+
+                    const result = data.chart.result[0];
+                    const meta = result.meta;
+                    
+                    return {
+                        symbol: symbol,
+                        currentPrice: meta.regularMarketPrice || meta.previousClose,
+                        previousClose: meta.previousClose,
+                        dailyChange: ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose * 100).toFixed(2),
+                        volume: meta.regularMarketVolume || 0,
+                        high: meta.regularMarketDayHigh,
+                        low: meta.regularMarketDayLow,
+                        marketCap: meta.marketCap,
+                        currency: meta.currency,
+                        exchangeName: meta.exchangeName,
+                        lastUpdate: new Date().toISOString(),
+                        dataSource: 'Yahoo Finance (Real Data)',
+                        isReal: true
+                    };
+                } catch (error) {
+                    console.error('Yahoo Finance error:', error);
+                    throw error;
                 }
             }
 
