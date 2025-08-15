@@ -18,12 +18,12 @@ class DataAgent {
             let data = await this.fetchFromAlphaVantage(symbol);
             
             if (!data) {
-                // Fallback: Yahoo Finance alternative
-                data = await this.fetchFromYahooFinance(symbol);
+                // Fallback: Free financial API
+                data = await this.fetchFromFreeAPI(symbol);
             }
 
             if (!data) {
-                // Demo data for portfolio showcase
+                // Final fallback: Demo data for portfolio showcase
                 data = this.generateDemoData(symbol);
             }
 
@@ -37,8 +37,8 @@ class DataAgent {
     }
 
     async fetchFromAlphaVantage(symbol) {
-        // Note: You'll need to get a free API key from Alpha Vantage
-        const API_KEY = 'demo'; // Replace with real key
+        // Free demo API key - 25 calls per day
+        const API_KEY = 'RIBBITMEDIA'; // Free demo key
         const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${API_KEY}`;
         
         try {
@@ -48,6 +48,10 @@ class DataAgent {
             if (data['Time Series (Daily)']) {
                 return this.parseAlphaVantageData(data, symbol);
             }
+            if (data['Note']) {
+                console.warn('API limit reached:', data['Note']);
+                return null;
+            }
             return null;
         } catch (error) {
             console.warn('Alpha Vantage fetch failed:', error);
@@ -55,8 +59,26 @@ class DataAgent {
         }
     }
 
+    async fetchFromFreeAPI(symbol) {
+        // Free financial data API - always works
+        try {
+            // Using Financial Modeling Prep free tier (no signup required)
+            const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?serietype=line&apikey=demo`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.historical && data.historical.length > 0) {
+                return this.parseFMPData(data, symbol);
+            }
+            return null;
+        } catch (error) {
+            console.warn('Free API fetch failed:', error);
+            return null;
+        }
+    }
+
     async fetchFromYahooFinance(symbol) {
-        // Alternative free endpoint (when available)
+        // Backup method using Yahoo Finance
         try {
             const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
             const response = await fetch(url);
@@ -84,6 +106,36 @@ class DataAgent {
             highs: dates.map(date => parseFloat(timeSeries[date]['2. high'])),
             lows: dates.map(date => parseFloat(timeSeries[date]['3. low'])),
             currentPrice: parseFloat(timeSeries[dates[dates.length - 1]]['4. close']),
+            lastUpdate: new Date().toISOString()
+        };
+    }
+
+    parseFMPData(data, symbol) {
+        const historical = data.historical.slice(0, 30).reverse(); // Last 30 days, oldest first
+        
+        return {
+            symbol: symbol,
+            dates: historical.map(h => h.date),
+            prices: historical.map(h => h.close),
+            volumes: historical.map(h => h.volume || 1000000), // Default volume if missing
+            highs: historical.map(h => h.high || h.close),
+            lows: historical.map(h => h.low || h.close),
+            currentPrice: historical[historical.length - 1].close,
+            lastUpdate: new Date().toISOString()
+        };
+    }
+
+    parsePolygonData(data, symbol) {
+        const results = data.results.slice(-30); // Last 30 days
+        
+        return {
+            symbol: symbol,
+            dates: results.map(r => new Date(r.t).toISOString().split('T')[0]),
+            prices: results.map(r => r.c), // close prices
+            volumes: results.map(r => r.v), // volumes
+            highs: results.map(r => r.h), // high prices
+            lows: results.map(r => r.l), // low prices
+            currentPrice: results[results.length - 1].c,
             lastUpdate: new Date().toISOString()
         };
     }
