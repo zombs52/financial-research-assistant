@@ -2132,46 +2132,83 @@
             }
 
             async fetchNews(symbol) {
+                console.log('NewsAgent.fetchNews called with symbol:', symbol);
+                
                 // Simulate processing time for UI effect
                 await this.delay(1200);
                 
                 try {
+                    console.log('NewsAgent: About to generate realistic news');
                     // Generate realistic news data
                     const newsData = this.generateRealisticNews(symbol);
+                    console.log('NewsAgent: Generated news data:', newsData);
                     return newsData;
                 } catch (error) {
+                    console.error('NewsAgent: Error in generateRealisticNews:', error);
                     console.warn('News fetch failed, using generated news:', error);
                     return this.generateRealisticNews(symbol);
                 }
             }
 
             generateRealisticNews(symbol) {
-                const newsTemplates = this.getNewsTemplates(symbol);
-                const articles = [];
+                console.log('generateRealisticNews called with symbol:', symbol);
                 
-                for (let i = 0; i < 5; i++) {
-                    const template = newsTemplates[Math.floor(Math.random() * newsTemplates.length)];
-                    const publishTime = new Date(Date.now() - Math.random() * 86400000 * 7); // Last 7 days
+                try {
+                    const newsTemplates = this.getNewsTemplates(symbol);
+                    console.log('Got news templates:', newsTemplates.length, 'templates');
                     
-                    articles.push({
-                        title: template.title.replace('{symbol}', symbol),
-                        summary: template.summary.replace('{symbol}', symbol),
-                        fullContent: (template.fullContent || template.summary).replace('{symbol}', symbol).replace('{company}', companyName),
-                        sentiment: template.sentiment,
-                        source: template.source,
-                        publishedAt: publishTime.toISOString(),
-                        publishedAgo: this.getTimeAgo(publishTime),
-                        impact: template.impact,
-                        id: `news-${symbol}-${i + 1}`
-                    });
+                    const companyNames = {
+                        'AAPL': 'Apple Inc.',
+                        'TSLA': 'Tesla Inc.',
+                        'GOOGL': 'Alphabet Inc.',
+                        'MSFT': 'Microsoft Corp.',
+                        'AMZN': 'Amazon.com Inc.',
+                        'ASML': 'ASML Holding',
+                        'SHELL': 'Shell plc'
+                    };
+                    const companyName = companyNames[symbol] || `${symbol} Corporation`;
+                    console.log('Company name resolved to:', companyName);
+                    
+                    const articles = [];
+                    
+                    for (let i = 0; i < 5; i++) {
+                        console.log(`Generating article ${i + 1}/5`);
+                        const template = newsTemplates[Math.floor(Math.random() * newsTemplates.length)];
+                        console.log('Selected template:', template.title);
+                        
+                        const publishTime = new Date(Date.now() - Math.random() * 86400000 * 7); // Last 7 days
+                        
+                        const article = {
+                            title: template.title.replace('{symbol}', symbol),
+                            summary: template.summary.replace('{symbol}', symbol),
+                            fullContent: (template.fullContent || template.summary).replace('{symbol}', symbol).replace('{company}', companyName),
+                            sentiment: template.sentiment,
+                            source: template.source,
+                            publishedAt: publishTime.toISOString(),
+                            publishedAgo: this.getTimeAgo(publishTime),
+                            impact: template.impact,
+                            id: `news-${symbol}-${i + 1}`
+                        };
+                        
+                        console.log('Generated article:', article.title);
+                        articles.push(article);
+                    }
+                    
+                    console.log('All articles generated successfully:', articles.length);
+                    
+                    const result = {
+                        articles: articles,
+                        overallSentiment: this.calculateOverallNewsSentiment(articles),
+                        totalArticles: articles.length,
+                        timeRange: '7 days'
+                    };
+                    
+                    console.log('Final news result:', result);
+                    return result;
+                } catch (error) {
+                    console.error('Error in generateRealisticNews loop:', error);
+                    throw error;
                 }
-
-                return {
-                    articles: articles,
-                    overallSentiment: this.calculateOverallNewsSentiment(articles),
-                    totalArticles: articles.length,
-                    timeRange: '7 days'
-                };
             }
 
             getNewsTemplates(symbol) {
@@ -2659,10 +2696,18 @@
                     this.updateAgentStatus('sentimentAgentStatus', 'complete', 'Sentiment analyzed');
 
                     // Step 4: News Agent
-                    this.updateAgentStatus('newsAgentStatus', 'working', 'Fetching news...');
-                    const news = await this.agents.news.fetchNews(symbol);
-                    this.currentNews = news; // Store for modal access
-                    this.updateAgentStatus('newsAgentStatus', 'complete', 'News retrieved');
+                    try {
+                        console.log('Starting News Agent for symbol:', symbol);
+                        this.updateAgentStatus('newsAgentStatus', 'working', 'Fetching news...');
+                        const news = await this.agents.news.fetchNews(symbol);
+                        console.log('News Agent completed successfully:', news);
+                        this.currentNews = news; // Store for modal access
+                        this.updateAgentStatus('newsAgentStatus', 'complete', 'News retrieved');
+                    } catch (newsError) {
+                        console.error('News Agent failed:', newsError);
+                        this.updateAgentStatus('newsAgentStatus', 'error', 'News failed');
+                        throw newsError; // Re-throw to be caught by main catch
+                    }
 
                     // Step 5: Fundamentals Agent
                     this.updateAgentStatus('fundamentalsAgentStatus', 'working', 'Analyzing fundamentals...');
@@ -2679,7 +2724,13 @@
 
                 } catch (error) {
                     console.error('Analysis failed:', error);
-                    this.showError('Analysis failed. Please try again.');
+                    console.error('Error stack:', error.stack);
+                    console.error('Error name:', error.name);
+                    console.error('Error message:', error.message);
+                    
+                    // More detailed error message for user
+                    const errorDetails = error.message || 'Unknown error';
+                    this.showError(`Analysis failed: ${errorDetails}. Open browser console (F12) to see detailed error logs.`);
                     this.resetAgentStatuses();
                 } finally {
                     // Re-enable form
