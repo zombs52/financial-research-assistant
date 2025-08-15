@@ -1779,6 +1779,7 @@
 
                 const displayCount = mode === 'beginner' ? 3 : 5;
                 const displayArticles = articles.slice(0, displayCount);
+                const isRealNews = articles.length > 0 && articles[0].isReal;
 
                 return `
                     <div class="analysis-card">
@@ -1808,7 +1809,7 @@
                             `).join('')}
                         </div>
                         <div class="news-disclaimer">
-                            <small>📡 Click articles to read full content. News data simulated for demonstration.</small>
+                            <small id="newsDisclaimer">${isRealNews ? '📡 Real financial news articles. Click to read full content.' : '📡 Click articles to read full content. News data simulated for demonstration.'}</small>
                         </div>
                     </div>
                 `;
@@ -2134,20 +2135,121 @@
             async fetchNews(symbol) {
                 console.log('NewsAgent.fetchNews called with symbol:', symbol);
                 
-                // Simulate processing time for UI effect
-                await this.delay(1200);
-                
                 try {
-                    console.log('NewsAgent: About to generate realistic news');
-                    // Generate realistic news data
-                    const newsData = this.generateRealisticNews(symbol);
-                    console.log('NewsAgent: Generated news data:', newsData);
-                    return newsData;
+                    // First try to get real news
+                    console.log('NewsAgent: Attempting to fetch real news...');
+                    const realNews = await this.fetchRealNews(symbol);
+                    if (realNews && realNews.articles && realNews.articles.length > 0) {
+                        console.log('NewsAgent: Successfully got real news:', realNews.articles.length, 'articles');
+                        return realNews;
+                    }
                 } catch (error) {
-                    console.error('NewsAgent: Error in generateRealisticNews:', error);
-                    console.warn('News fetch failed, using generated news:', error);
-                    return this.generateRealisticNews(symbol);
+                    console.warn('NewsAgent: Real news API failed, falling back to simulated:', error);
                 }
+                
+                // Fallback to simulated news
+                console.log('NewsAgent: Using simulated news as fallback');
+                await this.delay(800); // Shorter delay for fallback
+                const newsData = this.generateRealisticNews(symbol);
+                console.log('NewsAgent: Generated fallback news data:', newsData);
+                return newsData;
+            }
+
+            async fetchRealNews(symbol) {
+                // Get company name for better search results
+                const companyNames = {
+                    'AAPL': 'Apple',
+                    'TSLA': 'Tesla', 
+                    'GOOGL': 'Google OR Alphabet',
+                    'MSFT': 'Microsoft',
+                    'AMZN': 'Amazon',
+                    'META': 'Meta OR Facebook',
+                    'NFLX': 'Netflix',
+                    'NVDA': 'Nvidia',
+                    'ASML': 'ASML',
+                    'SHELL': 'Shell'
+                };
+
+                const companyName = companyNames[symbol] || symbol;
+                const searchQuery = `${companyName} stock earnings financial`;
+                
+                // Use CORS proxy for NewsAPI access
+                const newsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://newsapi.org/v2/everything?q=${encodeURIComponent(searchQuery)}&domains=reuters.com,bloomberg.com,cnbc.com,marketwatch.com,finance.yahoo.com&sortBy=publishedAt&language=en&pageSize=10`)}`;
+
+                console.log('Fetching from NewsAPI via CORS proxy:', newsUrl);
+
+                const response = await fetch(newsUrl);
+
+                if (!response.ok) {
+                    throw new Error(`NewsAPI failed: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('NewsAPI response:', data);
+
+                if (data.status !== 'ok' || !data.articles) {
+                    throw new Error('NewsAPI returned invalid data');
+                }
+
+                // Transform the data to match our format
+                const transformedArticles = data.articles.slice(0, 5).map((article, index) => ({
+                    id: `real-news-${symbol}-${index + 1}`,
+                    title: article.title,
+                    summary: article.description || article.title,
+                    fullContent: article.content || article.description || 'Full article available at source.',
+                    sentiment: this.analyzeSentiment(article.title + ' ' + (article.description || '')),
+                    source: this.extractSourceName(article.source.name),
+                    publishedAt: article.publishedAt,
+                    publishedAgo: this.getTimeAgo(new Date(article.publishedAt)),
+                    impact: this.determineImpact(article.title, article.description),
+                    url: article.url, // Real URL!
+                    isReal: true
+                }));
+
+                return {
+                    articles: transformedArticles,
+                    overallSentiment: this.calculateOverallNewsSentiment(transformedArticles),
+                    totalArticles: transformedArticles.length,
+                    timeRange: 'Recent',
+                    isReal: true
+                };
+            }
+
+            analyzeSentiment(text) {
+                const positiveWords = ['growth', 'profit', 'gain', 'rise', 'up', 'strong', 'beat', 'exceed', 'positive', 'bull', 'upgrade'];
+                const negativeWords = ['loss', 'fall', 'drop', 'down', 'weak', 'miss', 'decline', 'negative', 'bear', 'downgrade'];
+                
+                const lowerText = text.toLowerCase();
+                const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
+                const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
+                
+                if (positiveCount > negativeCount) return 'positive';
+                if (negativeCount > positiveCount) return 'negative';
+                return 'neutral';
+            }
+
+            extractSourceName(sourceName) {
+                // Clean up source names
+                const cleanNames = {
+                    'Reuters': 'Reuters',
+                    'Bloomberg': 'Bloomberg',
+                    'CNBC': 'CNBC',
+                    'MarketWatch': 'MarketWatch',
+                    'Yahoo Finance': 'Yahoo Finance'
+                };
+                return cleanNames[sourceName] || sourceName;
+            }
+
+            determineImpact(title, description) {
+                const text = (title + ' ' + (description || '')).toLowerCase();
+                
+                if (text.includes('earnings') || text.includes('acquisition') || text.includes('merger') || text.includes('ceo')) {
+                    return 'high';
+                }
+                if (text.includes('analyst') || text.includes('upgrade') || text.includes('downgrade')) {
+                    return 'medium';
+                }
+                return 'low';
             }
 
             generateRealisticNews(symbol) {
@@ -2645,7 +2747,13 @@
                         const articleId = e.target.dataset.articleId;
                         const article = this.findArticleById(articleId);
                         if (article) {
-                            this.showNewsModal(article);
+                            // If it's a real article with a real URL, open it in new tab
+                            if (article.isReal && article.url && article.url.startsWith('http')) {
+                                window.open(article.url, '_blank', 'noopener,noreferrer');
+                            } else {
+                                // Otherwise show modal with full content
+                                this.showNewsModal(article);
+                            }
                         }
                     }
                 });
