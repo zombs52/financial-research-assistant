@@ -1051,18 +1051,23 @@
 
             async fetchFromAlphaVantage(symbol) {
                 // Free demo API key - 25 calls per day
-                const API_KEY = 'RIBBITMEDIA'; // Free demo key
-                const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${API_KEY}`;
+                const API_KEY = 'demo'; // Free demo key
+                const alphaUrl = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`;
+                const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(alphaUrl)}`;
                 
                 try {
-                    const response = await fetch(url);
+                    const response = await fetch(proxiedUrl);
                     const data = await response.json();
                     
-                    if (data['Time Series (Daily)']) {
-                        return this.parseAlphaVantageData(data, symbol);
+                    if (data['Global Quote'] && Object.keys(data['Global Quote']).length > 0) {
+                        return this.parseAlphaVantageQuote(data['Global Quote'], symbol);
                     }
                     if (data['Note']) {
-                        console.warn('API limit reached:', data['Note']);
+                        console.warn('Alpha Vantage API limit reached:', data['Note']);
+                        return null;
+                    }
+                    if (data['Error Message']) {
+                        console.warn('Alpha Vantage error:', data['Error Message']);
                         return null;
                     }
                     return null;
@@ -1124,9 +1129,11 @@
 
             async fetchFromYahooFinance(symbol) {
                 // Yahoo Finance doesn't require API key and is very reliable
+                // Use CORS proxy to avoid browser blocking
                 try {
                     const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`;
-                    const response = await fetch(yahooUrl);
+                    const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                    const response = await fetch(proxiedUrl);
                     
                     if (!response.ok) {
                         throw new Error(`Yahoo Finance HTTP ${response.status}`);
@@ -1159,6 +1166,30 @@
                 } catch (error) {
                     console.error('Yahoo Finance error:', error);
                     throw error;
+                }
+            }
+
+            parseAlphaVantageQuote(quote, symbol) {
+                try {
+                    const currentPrice = parseFloat(quote['05. price']);
+                    const previousClose = parseFloat(quote['08. previous close']);
+                    const dailyChange = ((currentPrice - previousClose) / previousClose * 100).toFixed(2);
+                    
+                    return {
+                        symbol: symbol,
+                        currentPrice: currentPrice,
+                        previousClose: previousClose,
+                        dailyChange: parseFloat(dailyChange),
+                        volume: parseInt(quote['06. volume']),
+                        high: parseFloat(quote['03. high']),
+                        low: parseFloat(quote['04. low']),
+                        lastUpdate: quote['07. latest trading day'],
+                        dataSource: 'Alpha Vantage (Real Data)',
+                        isReal: true
+                    };
+                } catch (error) {
+                    console.error('Error parsing Alpha Vantage quote:', error);
+                    return null;
                 }
             }
 
