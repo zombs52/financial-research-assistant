@@ -281,6 +281,31 @@
             opacity: 1;
         }
 
+        .comparison-winner {
+            border: 3px solid #28a745 !important;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%);
+        }
+
+        .comparison-loser {
+            border: 2px solid #dc3545 !important;
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.02) 100%);
+        }
+
+        .comparison-tie {
+            border: 2px solid #ffc107 !important;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
+        }
+
+        .comparison-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .comparison-summary .metric-label,
+        .comparison-summary .metric-value {
+            color: white;
+        }
+
         @media (max-width: 768px) {
             .search-form {
                 flex-direction: column;
@@ -320,6 +345,12 @@
             <div class="mode-toggle">
                 <button class="mode-btn active" data-mode="beginner">👶 Beginner Mode</button>
                 <button class="mode-btn" data-mode="advanced">🎓 Advanced Mode</button>
+            </div>
+            
+            <div class="portfolio-controls" style="margin-top: 15px;">
+                <button class="mode-btn" id="addToPortfolioBtn" disabled>📁 Add to Portfolio</button>
+                <button class="mode-btn" id="viewPortfolioBtn">💼 View Portfolio (<span id="portfolioCount">0</span>)</button>
+                <button class="mode-btn" id="compareBtn" disabled>⚖️ Compare Stocks</button>
             </div>
         </div>
 
@@ -362,6 +393,69 @@
                 <div class="loading" id="loadingIndicator">
                     <div class="loading-spinner"></div>
                     <p>Multi-agent analysis in progress...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Management Section -->
+        <div class="results-section" id="portfolioSection" style="display: none;">
+            <div class="results-header">
+                <h2>💼 Your Portfolio</h2>
+                <button class="mode-btn" id="closePortfolioBtn" style="float: right; background: rgba(255,255,255,0.2);">✕</button>
+            </div>
+            
+            <div class="results-content" id="portfolioContent">
+                <div id="portfolioStats" class="analysis-grid" style="margin-bottom: 20px;">
+                    <div class="analysis-card">
+                        <h4>📊 Portfolio Overview</h4>
+                        <div class="metric">
+                            <span class="metric-label">Total Stocks</span>
+                            <span class="metric-value" id="totalStocks">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Avg Kees Score</span>
+                            <span class="metric-value" id="avgScore">-</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Risk Level</span>
+                            <span class="metric-value" id="portfolioRisk">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <h4>🎯 Portfolio Actions</h4>
+                        <button class="search-btn" id="analyzeAllBtn" style="width: 100%; margin-bottom: 10px;">🔄 Refresh All Data</button>
+                        <button class="search-btn" id="exportPortfolioBtn" style="width: 100%; margin-bottom: 10px;">📄 Export Report</button>
+                        <button class="search-btn" id="clearPortfolioBtn" style="width: 100%; background: #dc3545;">🗑️ Clear Portfolio</button>
+                    </div>
+                </div>
+                
+                <div id="portfolioStocks" class="analysis-grid">
+                    <!-- Portfolio stocks will be added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Comparison Section -->
+        <div class="results-section" id="comparisonSection" style="display: none;">
+            <div class="results-header">
+                <h2>⚖️ Stock Comparison</h2>
+                <button class="mode-btn" id="closeComparisonBtn" style="float: right; background: rgba(255,255,255,0.2);">✕</button>
+            </div>
+            
+            <div class="results-content" id="comparisonContent">
+                <div class="comparison-controls" style="margin-bottom: 20px; text-align: center;">
+                    <select id="stock1Select" class="search-input" style="width: 200px; margin-right: 10px;">
+                        <option value="">Select Stock 1</option>
+                    </select>
+                    <select id="stock2Select" class="search-input" style="width: 200px; margin-right: 10px;">
+                        <option value="">Select Stock 2</option>
+                    </select>
+                    <button class="search-btn" id="compareNowBtn">🔍 Compare</button>
+                </div>
+                
+                <div id="comparisonResults" class="analysis-grid">
+                    <!-- Comparison results will be added here -->
                 </div>
             </div>
         </div>
@@ -1129,6 +1223,288 @@
             }
         }
 
+        // Portfolio Manager for advanced tracking
+        class PortfolioManager {
+            constructor() {
+                this.portfolio = this.loadPortfolio();
+                this.updatePortfolioCount();
+            }
+
+            addStock(stockData, analysis, sentiment) {
+                const stock = {
+                    symbol: stockData.symbol,
+                    currentPrice: stockData.currentPrice,
+                    keesScore: this.calculateKeesScore(analysis, sentiment),
+                    analysis: analysis,
+                    sentiment: sentiment,
+                    dateAdded: new Date().toISOString(),
+                    lastUpdated: stockData.lastUpdate
+                };
+
+                // Remove if already exists, then add
+                this.portfolio = this.portfolio.filter(s => s.symbol !== stock.symbol);
+                this.portfolio.push(stock);
+                this.savePortfolio();
+                this.updatePortfolioCount();
+                
+                return true;
+            }
+
+            removeStock(symbol) {
+                this.portfolio = this.portfolio.filter(s => s.symbol !== symbol);
+                this.savePortfolio();
+                this.updatePortfolioCount();
+            }
+
+            getStock(symbol) {
+                return this.portfolio.find(s => s.symbol === symbol);
+            }
+
+            getAllStocks() {
+                return this.portfolio;
+            }
+
+            calculateKeesScore(analysis, sentiment) {
+                // Custom "Kees Score" algorithm - more sophisticated than basic score
+                let score = 50; // Start neutral
+                
+                // Technical Analysis (40% weight)
+                const rsi = analysis.technicalIndicators.rsi;
+                if (rsi > 30 && rsi < 70) score += 15; // Sweet spot
+                else if (rsi < 20) score += 10; // Oversold opportunity
+                else if (rsi > 80) score -= 15; // Overbought risk
+                
+                // Trend Analysis (25% weight)
+                if (analysis.trend === 'Uptrend') score += 12;
+                else if (analysis.trend === 'Downtrend') score -= 12;
+                
+                // Momentum (15% weight)
+                const momentum = analysis.priceAnalysis.momentum;
+                if (momentum > 5) score += 8;
+                else if (momentum < -5) score -= 8;
+                
+                // Volatility Risk (10% weight)
+                if (analysis.volatility < 20) score += 5; // Low vol bonus
+                else if (analysis.volatility > 50) score -= 10; // High vol penalty
+                
+                // Sentiment (10% weight)
+                if (sentiment.overall > 70) score += 5;
+                else if (sentiment.overall < 30) score -= 5;
+                
+                return Math.max(0, Math.min(100, Math.round(score)));
+            }
+
+            getPortfolioStats() {
+                if (this.portfolio.length === 0) {
+                    return { totalStocks: 0, avgScore: 0, riskLevel: 'N/A' };
+                }
+
+                const avgScore = this.portfolio.reduce((sum, stock) => sum + stock.keesScore, 0) / this.portfolio.length;
+                const avgVolatility = this.portfolio.reduce((sum, stock) => sum + stock.analysis.volatility, 0) / this.portfolio.length;
+                
+                let riskLevel = 'Low Risk';
+                if (avgVolatility > 40) riskLevel = 'High Risk';
+                else if (avgVolatility > 20) riskLevel = 'Medium Risk';
+
+                return {
+                    totalStocks: this.portfolio.length,
+                    avgScore: Math.round(avgScore),
+                    riskLevel: riskLevel
+                };
+            }
+
+            exportPortfolio() {
+                const stats = this.getPortfolioStats();
+                const report = {
+                    exportDate: new Date().toISOString(),
+                    portfolioStats: stats,
+                    stocks: this.portfolio.map(stock => ({
+                        symbol: stock.symbol,
+                        keesScore: stock.keesScore,
+                        currentPrice: stock.currentPrice,
+                        trend: stock.analysis.trend,
+                        riskLevel: stock.analysis.volatility > 40 ? 'High' : stock.analysis.volatility > 20 ? 'Medium' : 'Low',
+                        recommendation: stock.keesScore >= 70 ? 'Buy' : stock.keesScore >= 50 ? 'Hold' : 'Sell',
+                        dateAdded: stock.dateAdded
+                    }))
+                };
+
+                const dataStr = JSON.stringify(report, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `kees-portfolio-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                URL.revokeObjectURL(url);
+            }
+
+            savePortfolio() {
+                localStorage.setItem('keesPortfolio', JSON.stringify(this.portfolio));
+            }
+
+            loadPortfolio() {
+                const saved = localStorage.getItem('keesPortfolio');
+                return saved ? JSON.parse(saved) : [];
+            }
+
+            updatePortfolioCount() {
+                const countElement = document.getElementById('portfolioCount');
+                if (countElement) {
+                    countElement.textContent = this.portfolio.length;
+                }
+            }
+
+            clearPortfolio() {
+                this.portfolio = [];
+                this.savePortfolio();
+                this.updatePortfolioCount();
+            }
+        }
+
+        // Stock Comparison Manager
+        class ComparisonManager {
+            constructor(portfolioManager) {
+                this.portfolioManager = portfolioManager;
+            }
+
+            compareStocks(stock1Data, stock2Data) {
+                const comparison = {
+                    stock1: this.formatStockForComparison(stock1Data),
+                    stock2: this.formatStockForComparison(stock2Data),
+                    winner: null
+                };
+
+                // Determine overall winner based on Kees Score
+                if (comparison.stock1.keesScore > comparison.stock2.keesScore) {
+                    comparison.winner = 'stock1';
+                } else if (comparison.stock2.keesScore > comparison.stock1.keesScore) {
+                    comparison.winner = 'stock2';
+                } else {
+                    comparison.winner = 'tie';
+                }
+
+                return comparison;
+            }
+
+            formatStockForComparison(stockData) {
+                return {
+                    symbol: stockData.symbol,
+                    price: stockData.currentPrice,
+                    keesScore: stockData.keesScore,
+                    trend: stockData.analysis.trend,
+                    rsi: stockData.analysis.technicalIndicators.rsi,
+                    volatility: stockData.analysis.volatility,
+                    sentiment: stockData.sentiment.social,
+                    recommendation: stockData.keesScore >= 70 ? 'Strong Buy' : 
+                                  stockData.keesScore >= 60 ? 'Buy' : 
+                                  stockData.keesScore >= 40 ? 'Hold' : 'Sell'
+                };
+            }
+
+            generateComparisonHTML(comparison) {
+                const getWinnerClass = (isWinner, isTie) => {
+                    if (isTie) return 'comparison-tie';
+                    return isWinner ? 'comparison-winner' : 'comparison-loser';
+                };
+
+                const isTie = comparison.winner === 'tie';
+                const stock1Wins = comparison.winner === 'stock1';
+                const stock2Wins = comparison.winner === 'stock2';
+
+                return `
+                    <div class="analysis-card ${getWinnerClass(stock1Wins, isTie)}">
+                        <h4>📊 ${comparison.stock1.symbol} ${stock1Wins ? '🏆' : ''}</h4>
+                        <div class="metric">
+                            <span class="metric-label">Kees Score</span>
+                            <span class="metric-value">${comparison.stock1.keesScore}/100</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Price</span>
+                            <span class="metric-value">$${comparison.stock1.price}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Trend</span>
+                            <span class="metric-value">${comparison.stock1.trend}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">RSI</span>
+                            <span class="metric-value">${comparison.stock1.rsi}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Recommendation</span>
+                            <span class="metric-value">${comparison.stock1.recommendation}</span>
+                        </div>
+                    </div>
+
+                    <div class="analysis-card ${getWinnerClass(stock2Wins, isTie)}">
+                        <h4>📊 ${comparison.stock2.symbol} ${stock2Wins ? '🏆' : ''}</h4>
+                        <div class="metric">
+                            <span class="metric-label">Kees Score</span>
+                            <span class="metric-value">${comparison.stock2.keesScore}/100</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Price</span>
+                            <span class="metric-value">$${comparison.stock2.price}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Trend</span>
+                            <span class="metric-value">${comparison.stock2.trend}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">RSI</span>
+                            <span class="metric-value">${comparison.stock2.rsi}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Recommendation</span>
+                            <span class="metric-value">${comparison.stock2.recommendation}</span>
+                        </div>
+                    </div>
+
+                    <div class="analysis-card comparison-summary">
+                        <h4>🎯 Comparison Summary</h4>
+                        <div class="metric">
+                            <span class="metric-label">Winner</span>
+                            <span class="metric-value">
+                                ${isTie ? 'Tie Game!' : 
+                                  stock1Wins ? comparison.stock1.symbol : comparison.stock2.symbol}
+                            </span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Score Difference</span>
+                            <span class="metric-value">
+                                ${Math.abs(comparison.stock1.keesScore - comparison.stock2.keesScore)} points
+                            </span>
+                        </div>
+                        <p style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+                            <strong>Analysis:</strong> 
+                            ${this.generateComparisonInsight(comparison)}
+                        </p>
+                    </div>
+                `;
+            }
+
+            generateComparisonInsight(comparison) {
+                const diff = Math.abs(comparison.stock1.keesScore - comparison.stock2.keesScore);
+                const winner = comparison.winner === 'stock1' ? comparison.stock1 : comparison.stock2;
+                const loser = comparison.winner === 'stock1' ? comparison.stock2 : comparison.stock1;
+
+                if (comparison.winner === 'tie') {
+                    return `Both stocks show similar potential with nearly identical Kees Scores. Consider diversifying between both or look for other differentiating factors.`;
+                }
+
+                if (diff < 10) {
+                    return `Close call! ${winner.symbol} edges out ${loser.symbol} by ${diff} points. The difference is mainly due to ${winner.trend.toLowerCase()} vs ${loser.trend.toLowerCase()}.`;
+                } else if (diff < 20) {
+                    return `${winner.symbol} shows notably better fundamentals than ${loser.symbol}. The ${diff}-point advantage suggests ${winner.symbol} is the safer choice.`;
+                } else {
+                    return `Clear winner! ${winner.symbol} significantly outperforms ${loser.symbol} with a ${diff}-point advantage. Consider focusing on ${winner.symbol}.`;
+                }
+            }
+        }
+
         // Multi-Agent Financial Research System
         class FinancialResearchSystem {
             constructor() {
@@ -1139,6 +1515,9 @@
                     sentiment: new SentimentAgent(),
                     report: new ReportAgent()
                 };
+                this.portfolioManager = new PortfolioManager();
+                this.comparisonManager = new ComparisonManager(this.portfolioManager);
+                this.currentAnalysis = null; // Store current analysis for portfolio addition
                 this.initializeEventListeners();
             }
 
@@ -1151,11 +1530,57 @@
 
                 // Mode toggle
                 document.querySelectorAll('.mode-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.mode = e.target.dataset.mode;
-                    });
+                    if (btn.dataset.mode) {
+                        btn.addEventListener('click', (e) => {
+                            document.querySelectorAll('.mode-btn').forEach(b => {
+                                if (b.dataset.mode) b.classList.remove('active');
+                            });
+                            e.target.classList.add('active');
+                            this.mode = e.target.dataset.mode;
+                        });
+                    }
+                });
+
+                // Portfolio controls
+                document.getElementById('addToPortfolioBtn').addEventListener('click', () => {
+                    this.addCurrentStockToPortfolio();
+                });
+
+                document.getElementById('viewPortfolioBtn').addEventListener('click', () => {
+                    this.showPortfolio();
+                });
+
+                document.getElementById('compareBtn').addEventListener('click', () => {
+                    this.showComparison();
+                });
+
+                // Portfolio management
+                document.getElementById('closePortfolioBtn').addEventListener('click', () => {
+                    this.hidePortfolio();
+                });
+
+                document.getElementById('analyzeAllBtn').addEventListener('click', () => {
+                    this.refreshAllPortfolioData();
+                });
+
+                document.getElementById('exportPortfolioBtn').addEventListener('click', () => {
+                    this.portfolioManager.exportPortfolio();
+                });
+
+                document.getElementById('clearPortfolioBtn').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to clear your entire portfolio?')) {
+                        this.portfolioManager.clearPortfolio();
+                        this.refreshPortfolioDisplay();
+                    }
+                });
+
+                // Comparison controls
+                document.getElementById('closeComparisonBtn').addEventListener('click', () => {
+                    this.hideComparison();
+                });
+
+                document.getElementById('compareNowBtn').addEventListener('click', () => {
+                    this.performComparison();
                 });
             }
 
@@ -1269,6 +1694,214 @@
                 ['dataAgentStatus', 'analysisAgentStatus', 'sentimentAgentStatus', 'reportAgentStatus'].forEach(id => {
                     this.updateAgentStatus(id, 'idle', 'Idle');
                 });
+            }
+
+            // Portfolio Management Methods
+            addCurrentStockToPortfolio() {
+                if (!this.currentAnalysis) {
+                    alert('Please analyze a stock first before adding to portfolio');
+                    return;
+                }
+
+                const success = this.portfolioManager.addStock(
+                    this.currentAnalysis.stockData,
+                    this.currentAnalysis.analysis,
+                    this.currentAnalysis.sentiment
+                );
+
+                if (success) {
+                    alert(`${this.currentAnalysis.stockData.symbol} added to portfolio!`);
+                    this.updatePortfolioButtons();
+                }
+            }
+
+            showPortfolio() {
+                document.getElementById('resultsSection').classList.remove('show');
+                document.getElementById('comparisonSection').style.display = 'none';
+                document.getElementById('portfolioSection').style.display = 'block';
+                this.refreshPortfolioDisplay();
+            }
+
+            hidePortfolio() {
+                document.getElementById('portfolioSection').style.display = 'none';
+            }
+
+            refreshPortfolioDisplay() {
+                const stats = this.portfolioManager.getPortfolioStats();
+                
+                // Update stats
+                document.getElementById('totalStocks').textContent = stats.totalStocks;
+                document.getElementById('avgScore').textContent = stats.avgScore;
+                document.getElementById('portfolioRisk').textContent = stats.riskLevel;
+
+                // Update stock list
+                const stocksContainer = document.getElementById('portfolioStocks');
+                if (stats.totalStocks === 0) {
+                    stocksContainer.innerHTML = `
+                        <div class="analysis-card" style="grid-column: 1 / -1;">
+                            <h4>📁 Empty Portfolio</h4>
+                            <p>Analyze some stocks and add them to your portfolio to get started!</p>
+                        </div>
+                    `;
+                } else {
+                    stocksContainer.innerHTML = this.portfolioManager.getAllStocks()
+                        .map(stock => this.generatePortfolioStockHTML(stock))
+                        .join('');
+                }
+
+                // Update comparison dropdowns
+                this.updateComparisonDropdowns();
+            }
+
+            generatePortfolioStockHTML(stock) {
+                const recommendation = stock.keesScore >= 70 ? 'Buy' : stock.keesScore >= 50 ? 'Hold' : 'Sell';
+                const recommendationClass = stock.keesScore >= 70 ? 'recommendation' : stock.keesScore >= 50 ? 'warning' : 'danger';
+                
+                return `
+                    <div class="analysis-card">
+                        <h4>📊 ${stock.symbol} 
+                            <button class="mode-btn" onclick="window.financialSystem.removeFromPortfolio('${stock.symbol}')" 
+                                    style="float: right; background: #dc3545; padding: 2px 8px; font-size: 0.8rem;">✕</button>
+                        </h4>
+                        <div class="metric">
+                            <span class="metric-label">Kees Score</span>
+                            <span class="metric-value">${stock.keesScore}/100</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Price</span>
+                            <span class="metric-value">$${stock.currentPrice}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Trend</span>
+                            <span class="metric-value">${stock.analysis.trend}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Risk</span>
+                            <span class="metric-value">${stock.analysis.volatility > 40 ? 'High' : stock.analysis.volatility > 20 ? 'Medium' : 'Low'}</span>
+                        </div>
+                        <div class="recommendation ${recommendationClass}" style="margin-top: 10px; padding: 8px; border-radius: 5px;">
+                            <strong>${recommendation}</strong>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #666; margin-top: 8px;">
+                            Added: ${new Date(stock.dateAdded).toLocaleDateString()}
+                        </div>
+                    </div>
+                `;
+            }
+
+            removeFromPortfolio(symbol) {
+                if (confirm(`Remove ${symbol} from portfolio?`)) {
+                    this.portfolioManager.removeStock(symbol);
+                    this.refreshPortfolioDisplay();
+                    this.updatePortfolioButtons();
+                }
+            }
+
+            async refreshAllPortfolioData() {
+                const stocks = this.portfolioManager.getAllStocks();
+                if (stocks.length === 0) return;
+
+                const button = document.getElementById('analyzeAllBtn');
+                button.disabled = true;
+                button.textContent = '🔄 Refreshing...';
+
+                for (const stock of stocks) {
+                    try {
+                        const stockData = await this.agents.data.fetchStockData(stock.symbol);
+                        const analysis = await this.agents.analysis.analyze(stockData);
+                        const sentiment = await this.agents.sentiment.analyzeSentiment(stock.symbol);
+                        
+                        this.portfolioManager.addStock(stockData, analysis, sentiment);
+                    } catch (error) {
+                        console.warn(`Failed to refresh ${stock.symbol}:`, error);
+                    }
+                }
+
+                button.disabled = false;
+                button.textContent = '🔄 Refresh All Data';
+                this.refreshPortfolioDisplay();
+                alert('Portfolio data refreshed!');
+            }
+
+            // Comparison Methods
+            showComparison() {
+                const stocks = this.portfolioManager.getAllStocks();
+                if (stocks.length < 2) {
+                    alert('Add at least 2 stocks to your portfolio to use comparison');
+                    return;
+                }
+
+                document.getElementById('resultsSection').classList.remove('show');
+                document.getElementById('portfolioSection').style.display = 'none';
+                document.getElementById('comparisonSection').style.display = 'block';
+                this.updateComparisonDropdowns();
+            }
+
+            hideComparison() {
+                document.getElementById('comparisonSection').style.display = 'none';
+            }
+
+            updateComparisonDropdowns() {
+                const stocks = this.portfolioManager.getAllStocks();
+                const stock1Select = document.getElementById('stock1Select');
+                const stock2Select = document.getElementById('stock2Select');
+
+                const optionsHTML = stocks.map(stock => 
+                    `<option value="${stock.symbol}">${stock.symbol} ($${stock.currentPrice})</option>`
+                ).join('');
+
+                stock1Select.innerHTML = '<option value="">Select Stock 1</option>' + optionsHTML;
+                stock2Select.innerHTML = '<option value="">Select Stock 2</option>' + optionsHTML;
+            }
+
+            performComparison() {
+                const symbol1 = document.getElementById('stock1Select').value;
+                const symbol2 = document.getElementById('stock2Select').value;
+
+                if (!symbol1 || !symbol2) {
+                    alert('Please select two stocks to compare');
+                    return;
+                }
+
+                if (symbol1 === symbol2) {
+                    alert('Please select two different stocks');
+                    return;
+                }
+
+                const stock1 = this.portfolioManager.getStock(symbol1);
+                const stock2 = this.portfolioManager.getStock(symbol2);
+
+                const comparison = this.comparisonManager.compareStocks(stock1, stock2);
+                const comparisonHTML = this.comparisonManager.generateComparisonHTML(comparison);
+
+                document.getElementById('comparisonResults').innerHTML = comparisonHTML;
+            }
+
+            updatePortfolioButtons() {
+                const hasAnalysis = !!this.currentAnalysis;
+                const portfolioCount = this.portfolioManager.getAllStocks().length;
+
+                document.getElementById('addToPortfolioBtn').disabled = !hasAnalysis;
+                document.getElementById('compareBtn').disabled = portfolioCount < 2;
+            }
+
+            // Override displayResults to store current analysis and enable portfolio features
+            displayResults(symbol, stockData, analysis, sentiment, report) {
+                // Store current analysis for portfolio addition
+                this.currentAnalysis = { stockData, analysis, sentiment };
+
+                document.getElementById('resultsTitle').textContent = `${symbol} Analysis Results`;
+                
+                const content = document.getElementById('resultsContent');
+                content.innerHTML = report.html;
+
+                // Add chart if data available
+                if (stockData.prices && stockData.prices.length > 0) {
+                    this.createChart(stockData);
+                }
+
+                // Enable portfolio buttons
+                this.updatePortfolioButtons();
             }
         }
 
